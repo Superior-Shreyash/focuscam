@@ -111,7 +111,8 @@ input[type=text],input[type=number]{width:150px;background:#0c1220;border:1px so
 #inkBar button.col.on{box-shadow:0 0 0 3px #0a0e16,0 0 0 5px #fff}
 #inkBar .sz span{display:block;border-radius:50%;background:#e9eef8}
 #inkBar .sep{display:block;width:26px;height:1px;background:var(--line);margin:4px 0;flex:none}
-#inkColors,#inkSizes{display:flex;flex-direction:column;align-items:center}
+#inkColors,#inkSizes{display:grid;grid-template-columns:repeat(2,36px);gap:2px;justify-items:center;align-items:center}
+#inkBar button.sz{width:36px;height:36px}
 #toast{position:fixed;z-index:46;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);max-width:min(560px,90vw);text-align:center;background:rgba(17,24,39,.97);border:1px solid var(--line);padding:11px 16px;border-radius:14px;font-size:14.5px;opacity:0;transition:opacity .4s;pointer-events:none}
 #toast.on{opacity:1}
 #pages.dark .pg{background:#151515}
@@ -756,10 +757,16 @@ window.addEventListener("resize", () => { if (R.pdf && S && S.mode === "pdf") { 
 // Pencil always writes; fingers scroll unless "draw with finger" is on.
 const PEN_COLORS = ["#111111", "#1f5fd6", "#d62f3a", "#1e9e5a"];
 const HL_COLORS = ["#ffd400", "#7be36b", "#ff8fc8", "#6fd3ff"];
-const SIZES = { pen: [0.0014, 0.0022, 0.0036], hl: [0.012, 0.019, 0.028], eraser: [0.008, 0.014, 0.024] };
-const INK = { tool: "pen", penColor: PEN_COLORS[0], hlColor: HL_COLORS[0], size: 1, finger: false, open: false, active: null, undo: [], redo: [], saveTimer: 0 };
-{ const s = load(K_VIEW, {}).ink || {}; for (const k of ["tool", "penColor", "hlColor", "size", "finger"]) if (s[k] != null) INK[k] = s[k]; }
-function saveInkPrefs() { const v = load(K_VIEW, {}); v.ink = { tool: INK.tool, penColor: INK.penColor, hlColor: INK.hlColor, size: INK.size, finger: INK.finger }; save(K_VIEW, v); }
+// Widths are fractions of the page width (≈1 unit = page width on screen)
+const SIZES = { pen: [0.0012, 0.002, 0.003, 0.0045, 0.0065, 0.009], hl: [0.01, 0.016, 0.024, 0.034], eraser: [0.008, 0.016, 0.028] };
+const INK = { tool: "pen", penColor: PEN_COLORS[0], hlColor: HL_COLORS[0], sizes: { pen: 2, hl: 1, eraser: 1 }, finger: false, open: false, active: null, undo: [], redo: [], saveTimer: 0 };
+{
+  const s = load(K_VIEW, {}).ink || {};
+  for (const k of ["tool", "penColor", "hlColor", "finger"]) if (s[k] != null) INK[k] = s[k];
+  if (s.sizes) for (const t in INK.sizes) if (s.sizes[t] != null && s.sizes[t] < SIZES[t].length) INK.sizes[t] = s.sizes[t];
+}
+function saveInkPrefs() { const v = load(K_VIEW, {}); v.ink = { tool: INK.tool, penColor: INK.penColor, hlColor: INK.hlColor, sizes: INK.sizes, finger: INK.finger }; save(K_VIEW, v); }
+const curSize = () => SIZES[INK.tool][INK.sizes[INK.tool]];
 
 function attachInk(n, el, W, H) {
   const canvas = document.createElement("canvas"); canvas.className = "ink"; canvas.width = W; canvas.height = H;
@@ -768,23 +775,45 @@ function attachInk(n, el, W, H) {
   R.ink.set(n, { canvas, ctx: canvas.getContext("2d"), cache, cctx: cache.getContext("2d"), W });
   redrawCache(n);
 }
+// Turn a stroke into smooth curve pieces: quadratic Béziers through the midpoints of the samples,
+// grouped by (smoothed) pressure width. Used both for the screen and for the exported PDF, so they match.
+function strokeGeom(s, W) {
+  const p = s.p, n = p.length;
+  const P = p.map(q => [q[0] * W, q[1] * W]);
+  const hl = s.t === "hl", base = s.w * W;
+  const width = q => hl ? base : base * Math.round((0.4 + 0.7 * q) * 20) / 20;   // quantized so similar widths share one path
+  const pr = []; let acc = p[0][2]; for (const q of p) { acc += (q[2] - acc) * 0.3; pr.push(acc); }
+  if (n === 1) return { dot: [P[0][0], P[0][1], width(pr[0]) / 2] };
+  if (n === 2) return { groups: [{ w: width((pr[0] + pr[1]) / 2), start: P[0], segs: [["L", P[1][0], P[1][1]]] }] };
+  const groups = []; let g = null, start = P[0];
+  for (let i = 1; i < n - 1; i++) {
+    const end = i === n - 2 ? P[n - 1] : [(P[i][0] + P[i + 1][0]) / 2, (P[i][1] + P[i + 1][1]) / 2];
+    const w = width(pr[i]);
+    if (!g || g.w !== w) { g = { w, start, segs: [] }; groups.push(g); }
+    g.segs.push(["Q", P[i][0], P[i][1], end[0], end[1]]);
+    start = end;
+  }
+  return { groups };
+}
 function strokePath(g, s, W) {
-  const p = s.p; if (!p.length) return;
+  if (!s.p.length) return;
+  const geo = strokeGeom(s, W);
+  g.save();
   g.lineCap = "round"; g.lineJoin = "round"; g.strokeStyle = s.c; g.fillStyle = s.c;
-  if (s.t === "hl") {
-    g.save(); g.globalAlpha = 0.35; g.lineWidth = s.w * W;
-    g.beginPath(); g.moveTo(p[0][0] * W, p[0][1] * W);
-    for (let i = 1; i < p.length; i++) g.lineTo(p[i][0] * W, p[i][1] * W);
-    if (p.length === 1) g.lineTo(p[0][0] * W + 0.5, p[0][1] * W);
-    g.stroke(); g.restore(); return;
+  if (s.t === "hl") g.globalAlpha = 0.35;
+  if (geo.dot) { g.beginPath(); g.arc(geo.dot[0], geo.dot[1], geo.dot[2], 0, 6.2832); g.fill(); }
+  else if (s.t === "hl") {           // one path so overlapping parts don't get darker
+    g.lineWidth = geo.groups[0].w; g.beginPath(); g.moveTo(...geo.groups[0].start);
+    for (const gr of geo.groups) for (const c of gr.segs) c[0] === "Q" ? g.quadraticCurveTo(c[1], c[2], c[3], c[4]) : g.lineTo(c[1], c[2]);
+    g.stroke();
+  } else {
+    for (const gr of geo.groups) {
+      g.lineWidth = gr.w; g.beginPath(); g.moveTo(...gr.start);
+      for (const c of gr.segs) c[0] === "Q" ? g.quadraticCurveTo(c[1], c[2], c[3], c[4]) : g.lineTo(c[1], c[2]);
+      g.stroke();
+    }
   }
-  const wOf = q => Math.max(0.8, s.w * W * (0.45 + 0.9 * q));
-  if (p.length === 1) { g.beginPath(); g.arc(p[0][0] * W, p[0][1] * W, wOf(p[0][2]) / 2, 0, 6.2832); g.fill(); return; }
-  for (let i = 1; i < p.length; i++) {
-    const a = p[i - 1], b = p[i];
-    g.lineWidth = wOf((a[2] + b[2]) / 2);
-    g.beginPath(); g.moveTo(a[0] * W, a[1] * W); g.lineTo(b[0] * W, b[1] * W); g.stroke();
-  }
+  g.restore();
 }
 function redrawCache(n) {
   const ink = R.ink.get(n); if (!ink) return;
@@ -822,7 +851,7 @@ pagesEl.addEventListener("pointerdown", e => {
   try { pg.setPointerCapture(e.pointerId); } catch (x) {}
   const a = INK.active = { id: e.pointerId, n, rect: pg.getBoundingClientRect(), erase: INK.tool === "eraser", removed: [], stroke: null, raf: 0 };
   if (a.erase) eraseAt(e);
-  else { a.stroke = { t: INK.tool, c: INK.tool === "hl" ? INK.hlColor : INK.penColor, w: SIZES[INK.tool][INK.size], p: [] }; addInkPoints(e); }
+  else { a.stroke = { t: INK.tool, c: INK.tool === "hl" ? INK.hlColor : INK.penColor, w: curSize(), p: [] }; addInkPoints(e); }
 });
 pagesEl.addEventListener("pointermove", e => {
   const a = INK.active; if (!a || e.pointerId !== a.id) return;
@@ -831,15 +860,26 @@ pagesEl.addEventListener("pointermove", e => {
 });
 pagesEl.addEventListener("pointerup", endInk);
 pagesEl.addEventListener("pointercancel", endInk);
+// Input smoothing: each new sample is pulled only part of the way toward the pen (removes hand/sensor jitter),
+// pressure is eased, and samples closer than ~0.4px are skipped.
+const STREAMLINE = 0.5, MIN_GAP = 0.00035;
 function addInkPoints(e) {
-  const a = INK.active;
+  const a = INK.active, pts = a.stroke.p;
   const evs = (e.getCoalescedEvents && e.getCoalescedEvents()) || [];
-  for (const ev of (evs.length ? evs : [e])) a.stroke.p.push(inkPoint(ev, a.rect));
+  for (const ev of (evs.length ? evs : [e])) {
+    const raw = inkPoint(ev, a.rect);
+    a.raw = raw;
+    if (!a.sm) { a.sm = raw.slice(); pts.push(raw); continue; }
+    const sm = a.sm;
+    sm[0] += (raw[0] - sm[0]) * STREAMLINE; sm[1] += (raw[1] - sm[1]) * STREAMLINE; sm[2] += (raw[2] - sm[2]) * 0.4;
+    const last = pts[pts.length - 1];
+    if (Math.hypot(sm[0] - last[0], sm[1] - last[1]) >= MIN_GAP) pts.push([Math.round(sm[0] * 1e5) / 1e5, Math.round(sm[1] * 1e5) / 1e5, Math.round(sm[2] * 1000) / 1000]);
+  }
   if (!a.raf) a.raf = requestAnimationFrame(() => { a.raf = 0; if (INK.active === a) blit(a.n, a.stroke); });
 }
 function eraseAt(e) {
   const a = INK.active, q = inkPoint(e, a.rect), list = R.notes[a.n] || [];
-  const r = SIZES.eraser[INK.size];
+  const r = SIZES.eraser[INK.sizes.eraser];
   let hit = false;
   for (let i = list.length - 1; i >= 0; i--) {
     const s = list[i];
@@ -852,6 +892,9 @@ function endInk(e) {
   INK.active = null; if (a.raf) cancelAnimationFrame(a.raf);
   if (a.erase) { if (a.removed.length) { INK.undo.push({ t: "erase", n: a.n, items: a.removed }); INK.redo = []; } }
   else if (a.stroke.p.length) {
+    // the smoothing lags slightly behind the pen tip, so finish the line exactly where the pen lifted
+    const last = a.stroke.p[a.stroke.p.length - 1];
+    if (a.raw && a.stroke.p.length > 1 && Math.hypot(a.raw[0] - last[0], a.raw[1] - last[1]) > MIN_GAP) a.stroke.p.push([a.raw[0], a.raw[1], last[2]]);
     (R.notes[a.n] = R.notes[a.n] || []).push(a.stroke);
     INK.undo.push({ t: "add", n: a.n, s: a.stroke }); INK.redo = [];
     const ink = R.ink.get(a.n); if (ink) { strokePath(ink.cctx, a.stroke, ink.W); blit(a.n); }
@@ -884,8 +927,9 @@ function renderInkBar() {
   const cols = INK.tool === "pen" ? PEN_COLORS : INK.tool === "hl" ? HL_COLORS : [];
   const cur = INK.tool === "hl" ? INK.hlColor : INK.penColor;
   $("#inkColors").innerHTML = cols.map(c => `<button class="col${c === cur ? " on" : ""}" data-color="${c}" style="background:${c}" title="Colour"></button>`).join("");
-  $("#sizeSep").style.display = cols.length ? "" : "none";
-  $("#inkSizes").innerHTML = [0, 1, 2].map(i => `<button class="sz${i === INK.size ? " on" : ""}" data-size="${i}" title="Size"><span style="width:${6 + i * 5}px;height:${6 + i * 5}px"></span></button>`).join("");
+  const sz = SIZES[INK.tool], cur2 = INK.sizes[INK.tool];
+  const dot = i => INK.tool === "pen" ? [3, 5, 7, 10, 13, 17][i] : INK.tool === "hl" ? [7, 10, 14, 18][i] : [6, 11, 17][i];
+  $("#inkSizes").innerHTML = sz.map((_, i) => `<button class="sz${i === cur2 ? " on" : ""}" data-size="${i}" title="Thickness ${i + 1}"><span style="width:${dot(i)}px;height:${dot(i)}px;${INK.tool === "hl" ? "border-radius:3px;opacity:.7;" : ""}"></span></button>`).join("");
   $("#undoBtn").disabled = !INK.undo.length; $("#redoBtn").disabled = !INK.redo.length;
   $("#fingerBtn").classList.toggle("on", INK.finger);
   pagesEl.classList.toggle("fingerdraw", INK.finger);
@@ -895,7 +939,7 @@ $("#inkBar").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   if (b.dataset.tool) INK.tool = b.dataset.tool;
   else if (b.dataset.color) { if (INK.tool === "hl") INK.hlColor = b.dataset.color; else INK.penColor = b.dataset.color; }
-  else if (b.dataset.size) INK.size = +b.dataset.size;
+  else if (b.dataset.size) INK.sizes[INK.tool] = +b.dataset.size;
   else if (b.id === "fingerBtn") { INK.finger = !INK.finger; toast(INK.finger ? "👆 Finger now draws. Turn this off to scroll with your finger." : "👆 Finger scrolls again. Only the Pencil draws."); }
   else return;
   saveInkPrefs(); renderInkBar();
@@ -932,20 +976,16 @@ async function exportPdf() {
         if (rot === 270) return [cb.x + cb.width - v, cb.y + cb.height - u];
         return [cb.x + u, cb.y + cb.height - v];
       };
+      // same smooth curves as on screen: geometry in "page widths", mapped into PDF space
+      const pt = (x, y) => { const [X, Y] = map(x, y); return `${X.toFixed(2)} ${(-Y).toFixed(2)}`; };
       for (const s of list) {
-        const col = rgbOf(s.c);
-        if (s.t === "hl") {
-          const pts = s.p.map(q => map(q[0], q[1]));
-          if (pts.length === 1) pts.push([pts[0][0] + 0.5, pts[0][1]]);
-          const d = pts.map((q, i) => `${i ? "L" : "M"} ${q[0].toFixed(2)} ${(-q[1]).toFixed(2)}`).join(" ");
-          page.drawSvgPath(d, { x: 0, y: 0, borderColor: col, borderWidth: s.w * Wd, borderOpacity: 0.35 });
-        } else {
-          const wOf = q => Math.max(0.4, s.w * Wd * (0.45 + 0.9 * q));
-          if (s.p.length === 1) { const [x, y] = map(s.p[0][0], s.p[0][1]); page.drawCircle({ x, y, size: wOf(s.p[0][2]) / 2, color: col }); continue; }
-          for (let i = 1; i < s.p.length; i++) {
-            const a = s.p[i - 1], b = s.p[i], [x1, y1] = map(a[0], a[1]), [x2, y2] = map(b[0], b[1]);
-            page.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness: wOf((a[2] + b[2]) / 2), color: col, lineCap: L.LineCapStyle.Round });
-          }
+        if (!s.p.length) continue;
+        const col = rgbOf(s.c), op = s.t === "hl" ? 0.35 : 1, geo = strokeGeom(s, 1);
+        if (geo.dot) { const [x, y] = map(geo.dot[0], geo.dot[1]); page.drawCircle({ x, y, size: geo.dot[2] * Wd, color: col, opacity: op }); continue; }
+        const groups = s.t === "hl" ? [{ w: geo.groups[0].w, start: geo.groups[0].start, segs: geo.groups.flatMap(g => g.segs) }] : geo.groups;
+        for (const g of groups) {
+          const d = `M ${pt(...g.start)} ` + g.segs.map(c => c[0] === "Q" ? `Q ${pt(c[1], c[2])} ${pt(c[3], c[4])}` : `L ${pt(c[1], c[2])}`).join(" ");
+          page.drawSvgPath(d, { x: 0, y: 0, borderColor: col, borderWidth: Math.max(0.3, g.w * Wd), borderOpacity: op, borderLineCap: L.LineCapStyle.Round });
         }
       }
     }
