@@ -80,7 +80,7 @@ input[type=text],input[type=number]{width:150px;background:#0c1220;border:1px so
 .ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}.mute{color:var(--mute)}
 .preview{position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:4/3}
 .preview canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
-.dbg{font:12px ui-monospace,Menlo,monospace;color:var(--mute);margin-top:8px;min-height:16px}
+.diag{font:12px ui-monospace,Menlo,monospace;color:var(--mute);margin-top:8px;min-height:16px}
 .aiblock{margin-top:14px}
 .aihead{display:flex;justify-content:space-between;align-items:baseline}
 #spark{width:100%;height:70px;display:block;margin-top:6px;background:#0c1220;border-radius:10px;border:1px solid var(--line)}
@@ -268,7 +268,7 @@ input[type=text],input[type=number]{width:150px;background:#0c1220;border:1px so
       </div>
       <div class="card">
         <div class="preview" id="previewBox"><canvas id="overlay"></canvas></div>
-        <div class="dbg" id="dbg"></div>
+        <div class="diag" id="diagLine"></div>
         <div class="aiblock">
           <div class="aihead"><h2 style="margin:0">AI drift probability</h2><b id="pTxt">—</b></div>
           <canvas id="spark" width="600" height="140"></canvas>
@@ -276,7 +276,7 @@ input[type=text],input[type=number]{width:150px;background:#0c1220;border:1px so
         </div>
         <div class="row" style="margin-top:8px;border:0"><span class="mute" style="font-size:14px">Recalibrate if you move the iPad</span><button class="btn sm" id="recalBtn2">Recalibrate</button></div>
         <h2 style="margin-top:10px">Session log</h2>
-        <ul class="log" id="log"></ul>
+        <ul class="log" id="sessLog"></ul>
       </div>
     </div>
   </div>
@@ -736,7 +736,7 @@ async function startSession(opts) {
   opts.mode === "book" ? show("#bookView") : hide("#bookView");
   $("#bvBook").textContent = "📖 " + (opts.name || "Paper book") + (S.startPage ? ` · from p. ${S.startPage}` : "");
   hide("#home"); show("#session");
-  $("#log").innerHTML = "";
+  $("#sessLog").innerHTML = "";
   showPreview = false; lastTouchT = performance.now();
   keepAwake();
   beginCalibration();
@@ -1077,7 +1077,7 @@ function logEvent(type, text) {
   if (!S) return;
   const em = ALERTS[type] ? ALERTS[type].emoji : type === "self" ? "🙋" : type === "yawnlog" ? "🥱" : "•";
   S.log.unshift({ t: S.totalSec, em, text }); S.log = S.log.slice(0, 7);
-  $("#log").innerHTML = S.log.map(l => `<li><time>${fmt(l.t)}</time><span>${l.em} ${esc(l.text)}</span></li>`).join("");
+  $("#sessLog").innerHTML = S.log.map(l => `<li><time>${fmt(l.t)}</time><span>${l.em} ${esc(l.text)}</span></li>`).join("");
 }
 function chip(id, txt, cls) { const el = $(id); el.textContent = txt; el.className = cls; }
 function updateUI() {
@@ -1108,7 +1108,7 @@ function updateUI() {
   const lp = Math.round(clamp(model.n / 90, 0, 1) * 100);
   $("#learnWrap").style.display = baselineReady() ? "none" : "";
   $("#learnPct").textContent = lp + "%"; $("#learnBar").style.width = lp + "%";
-  if (S.base) $("#dbg").textContent = S.present ? `head ${S.angle.toFixed(0)}°/${T.angle.toFixed(0)}° · eyes ${(S.blink * 100).toFixed(0)}/${(S.closedThr * 100).toFixed(0)} · blinks ${S.blinkTimes.filter(t => performance.now() - t < 30000).length * 2}/min · poses ${S.base.poses.length}` : "No face detected";
+  if (S.base) $("#diagLine").textContent = S.present ? `head ${S.angle.toFixed(0)}°/${T.angle.toFixed(0)}° · eyes ${(S.blink * 100).toFixed(0)}/${(S.closedThr * 100).toFixed(0)} · blinks ${S.blinkTimes.filter(t => performance.now() - t < 30000).length * 2}/min · poses ${S.base.poses.length}` : "No face detected";
   if (showPreview) drawSpark();
 }
 function drawSpark() {
