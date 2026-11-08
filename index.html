@@ -39,7 +39,9 @@ h2{font-size:15px;margin:0 0 12px;color:var(--mute);font-weight:600;text-transfo
 .seg{display:flex;background:#0c1220;border:1px solid var(--line);border-radius:12px;padding:3px}
 .seg button{flex:1;padding:8px 10px;border-radius:9px;background:transparent;color:var(--mute);font-weight:600;font-size:14px}
 .seg button.on{background:var(--card2);color:var(--text)}
-input[type=text]{width:150px;background:#0c1220;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:8px 10px;font-size:15px}
+.fl{display:block;font-size:14px;color:var(--mute);margin:14px 0 0}
+.fl input{display:block;width:100%!important;margin-top:6px}
+input[type=text],input[type=number]{width:150px;background:#0c1220;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:8px 10px;font-size:15px}
 .starts{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-top:18px}
 @media (max-width:600px){.starts{grid-template-columns:1fr}}
 .big{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:18px;border-radius:16px;font-size:19px;font-weight:700;background:linear-gradient(135deg,#3ee6a8,#5fc7ff);color:#04121a;cursor:pointer}
@@ -117,6 +119,20 @@ input[type=text]{width:150px;background:#0c1220;border:1px solid var(--line);col
 #session.reading .sess{grid-template-columns:1fr}
 #session.reading .ring{width:190px;height:190px}
 #session.reading .ring svg{width:190px;height:190px}
+/* paper book mode: calm full-screen view */
+#bookView{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:calc(60px + env(safe-area-inset-top)) 20px calc(110px + env(safe-area-inset-bottom));background:radial-gradient(circle at 50% 40%,#111a2b,#06090f 70%)}
+.bvTop{position:absolute;top:calc(18px + env(safe-area-inset-top));left:24px;right:24px;display:flex;justify-content:space-between;gap:16px;color:var(--mute);font-size:17px}
+.bvTop b{color:var(--text);font-variant-numeric:tabular-nums}
+#bvBook{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#session #bookView .ring,#session #bookView .ring svg{width:300px;height:300px}
+#bookView .ring .num b{font-size:84px}
+#bvState{font-size:30px;font-weight:700}
+#bvHint{color:var(--mute);font-size:16px;text-align:center;max-width:460px}
+.bvBtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.bvBtns button{padding:14px 18px;border-radius:14px;background:var(--card2);border:1px solid var(--line);font-weight:600;font-size:16px}
+.bvBtns .end{background:#3a1520;border-color:#5a2232;color:#ffb3bf}
+#dimmer{position:fixed;inset:0;z-index:44;background:#000;opacity:0;pointer-events:none;transition:opacity 1.5s}
+#dimmer.on{opacity:.82;pointer-events:auto}
 /* overlays */
 .ov{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(5,8,14,.86);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .box{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:26px;max-width:520px;width:100%;text-align:center}
@@ -148,12 +164,12 @@ input[type=text]{width:150px;background:#0c1220;border:1px solid var(--line);col
 
   <div class="starts">
     <label class="big" id="openLbl">📄 Open a PDF &amp; start studying<input type="file" id="pdfIn" accept="application/pdf,.pdf" hidden></label>
-    <button class="big alt" id="bookBtn">📚 Paper book instead</button>
+    <button class="big alt" id="bookBtn">📖 Paper book mode</button>
   </div>
 
   <div class="card" id="recentCard" style="margin-top:16px">
     <h2>Continue reading</h2>
-    <ul class="hist" id="recent"><li class="mute">PDFs you open will appear here, so you can resume on the same page.</li></ul>
+    <ul class="hist" id="recent"><li class="mute">PDFs and books you study will appear here, so you can pick up where you stopped.</li></ul>
   </div>
 
   <div class="grid2" style="margin-top:16px">
@@ -206,6 +222,21 @@ input[type=text]{width:150px;background:#0c1220;border:1px solid var(--line);col
     <button id="zOut">−</button><span id="pageInd">1 / 1</span><button id="zIn">+</button><button id="darkBtn" title="Night mode">🌙</button>
   </div>
 
+  <div id="bookView" class="hidden">
+    <div class="bvTop"><span id="bvBook">📖 Paper book</span><b id="bvTime">0:00</b></div>
+    <div class="ring" style="width:300px;height:300px">
+      <svg width="300" height="300" viewBox="0 0 230 230">
+        <circle cx="115" cy="115" r="98" stroke="#1c2538" stroke-width="14" fill="none"/>
+        <circle id="bvArc" cx="115" cy="115" r="98" stroke="#3ee6a8" stroke-width="14" fill="none" stroke-linecap="round" stroke-dasharray="615.75" stroke-dashoffset="0"/>
+      </svg>
+      <div class="num"><b id="bvNum">100</b><span>focus score</span></div>
+    </div>
+    <div id="bvState">Locked in</div>
+    <div id="bvHint">Eyes on your book. I'll nudge you if you drift.</div>
+    <div class="bvBtns"><button id="bvZone">🙋 I zoned out</button><button id="bvDetails">📊 Details</button><button id="bvPause">⏸ Pause</button><button class="end" id="bvEnd">End</button></div>
+  </div>
+  <div id="dimmer"></div>
+
   <div id="dash" class="wrap">
     <div class="drawerHead"><h2 style="margin:0">Focus details</h2><button class="btn sm" id="closePanel">Close ✕</button></div>
     <div class="topbar">
@@ -256,6 +287,18 @@ input[type=text]{width:150px;background:#0c1220;border:1px solid var(--line);col
 <!-- OVERLAYS -->
 <div class="ov hidden" id="loadOv"><div class="box"><div class="spin"></div><h3>Getting ready</h3><p id="loadMsg">Loading AI models (about 15 MB the first time, then cached).</p></div></div>
 <div class="ov hidden" id="calibOv"><div class="box"><div class="count" id="calibCount">6</div><h3 id="calibTitle">Calibrating</h3><p id="calibMsg"></p><button class="btn hidden" id="calibSkip">Skip, I don't use a notebook</button></div></div>
+<div class="ov hidden" id="bookOv"><div class="box" style="text-align:left">
+  <div class="emoji" style="text-align:center">📖</div><h3 style="text-align:center">Paper book mode</h3>
+  <p style="text-align:center">Stand the iPad up beside your book so the front camera sees your face and hands. The screen dims while you read.</p>
+  <label class="fl">Book or chapter<input type="text" id="bkName" list="bkList" maxlength="60" placeholder="e.g. HC Verma, Ch. 7"></label>
+  <datalist id="bkList"></datalist>
+  <label class="fl">Starting page (optional)<input type="number" id="bkPage" inputmode="numeric" min="1" placeholder="e.g. 112"></label>
+  <div class="fb" style="margin-top:18px"><button class="n" id="bkCancel">Cancel</button><button class="y" id="bkStart">Start studying</button></div>
+</div></div>
+<div class="ov hidden" id="pageAskOv"><div class="box"><div class="emoji">📖</div><h3>Which page did you reach?</h3><p>Used to work out your reading pace.</p>
+  <input type="number" id="endPage" inputmode="numeric" min="1" style="width:100%;font-size:22px;text-align:center">
+  <div class="fb" style="margin-top:14px"><button class="n" id="epSkip">Skip</button><button class="y" id="epSave">Save</button></div>
+</div></div>
 <div class="ov hidden" id="pauseOv"><div class="box"><div class="emoji">☕</div><h3>Paused</h3><p>Take your break. Tracking is off until you resume.</p><button class="btn pri" id="resumeBtn" style="padding:14px 26px;font-size:16px">Resume</button></div></div>
 <div class="ov hidden" id="errOv"><div class="box"><div class="emoji">⚠️</div><h3 id="errTitle">Something went wrong</h3><p id="errMsg"></p><button class="btn" id="errClose">OK</button></div></div>
 <div class="ov hidden" id="alertOv"><div class="box">
@@ -287,7 +330,7 @@ const LIBS = [
 ];
 const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
 const PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-const K_SET = "focuscam.settings.v2", K_HIST = "focuscam.history.v1", K_MODEL = "focuscam.model.v3", K_PAGES = "focuscam.pages.v1", K_VIEW = "focuscam.view.v1";
+const K_SET = "focuscam.settings.v2", K_HIST = "focuscam.history.v1", K_MODEL = "focuscam.model.v3", K_PAGES = "focuscam.pages.v1", K_VIEW = "focuscam.view.v1", K_BOOKS = "focuscam.books.v1";
 const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
@@ -378,7 +421,8 @@ function newState(mode) {
     scrollAcc: 0, touches: 0,
     samples: [], lastSample: 0, featHist: [], p: 0, pHist: [], driftMs: 0, lastNeg: 0,
     score: 100, minutes: [], minAcc: { s: 0, n: 0 }, alerts: [], lastAlertAt: {}, lastAnyAlert: -1e9, goneAlerted: false,
-    base: null, calib: null, log: [], selfCaught: 0, pagesSeen: new Set()
+    base: null, calib: null, log: [], selfCaught: 0, pagesSeen: new Set(),
+    hx: [], lastFlip: 0, flips: 0, startPage: null
   };
 }
 
@@ -416,7 +460,7 @@ function renderHistory() {
     const d = new Date(x.d);
     const day = d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
     const cls = x.focus >= 75 ? "ok" : x.focus >= 50 ? "warn" : "bad";
-    return `<li><span class="nm">${day} · ${Math.max(1, Math.round(x.dur / 60))} min${x.name ? " · " + esc(x.name) : ""}</span><span><b class="${cls}">${x.focus}%</b> <span class="pill">${x.alerts} nudges</span></span></li>`;
+    return `<li><span class="nm">${day} · ${Math.max(1, Math.round(x.dur / 60))} min${x.name ? " · " + esc(x.name) : ""}${x.pages ? " · " + x.pages + " pages" : ""}</span><span><b class="${cls}">${x.focus}%</b> <span class="pill">${x.alerts} nudges</span></span></li>`;
   }).join("");
 }
 
@@ -438,15 +482,42 @@ async function rememberPdf(file, key) {
     for (const r of all.slice(5)) await idb.del(r.key);
   } catch (e) {}
 }
+function rememberBook(name, page) {
+  const list = load(K_BOOKS, []).filter(b => b.name !== name);
+  list.unshift({ name, page: page || null, t: Date.now() });
+  save(K_BOOKS, list.slice(0, 6));
+}
 async function renderRecent() {
   let all = [];
-  try { all = (await idb.all()).sort((a, b) => b.t - a.t); } catch (e) {}
-  const pages = load(K_PAGES, {});
-  if (!all.length) { $("#recent").innerHTML = `<li class="mute">PDFs you open will appear here, so you can resume on the same page.</li>`; return; }
-  $("#recent").innerHTML = all.map(r => `<li><span class="nm">📄 ${esc(r.name)}</span><span class="pill">p. ${pages[r.key] || 1}</span><button class="btn sm pri" data-open="${esc(r.key)}">Resume</button><button class="btn sm" data-del="${esc(r.key)}">✕</button></li>`).join("");
+  try { all = await idb.all(); } catch (e) {}
+  const pages = load(K_PAGES, {}), books = load(K_BOOKS, []);
+  const items = [
+    ...all.map(r => ({ t: r.t, html: `<li><span class="nm">📄 ${esc(r.name)}</span><span class="pill">p. ${pages[r.key] || 1}</span><button class="btn sm pri" data-open="${esc(r.key)}">Resume</button><button class="btn sm" data-del="${esc(r.key)}">✕</button></li>` })),
+    ...books.map((b, i) => ({ t: b.t, html: `<li><span class="nm">📖 ${esc(b.name)}</span>${b.page ? `<span class="pill">p. ${b.page}</span>` : ""}<button class="btn sm pri" data-book="${i}">Resume</button><button class="btn sm" data-bdel="${i}">✕</button></li>` }))
+  ].sort((a, b) => b.t - a.t);
+  if (!items.length) { $("#recent").innerHTML = `<li class="mute">PDFs and books you study will appear here, so you can pick up where you stopped.</li>`; return; }
+  $("#recent").innerHTML = items.map(x => x.html).join("");
 }
+function openBookForm(name, page) {
+  unlockAudio();
+  $("#bkName").value = name || ""; $("#bkPage").value = page || "";
+  $("#bkList").innerHTML = load(K_BOOKS, []).map(b => `<option value="${esc(b.name)}">`).join("");
+  show("#bookOv");
+}
+$("#bookBtn").onclick = () => openBookForm("", "");
+$("#bkCancel").onclick = () => hide("#bookOv");
+$("#bkName").addEventListener("change", () => { const b = load(K_BOOKS, []).find(b => b.name === $("#bkName").value.trim()); if (b && b.page && !$("#bkPage").value) $("#bkPage").value = b.page; });
+$("#bkStart").onclick = () => {
+  unlockAudio();
+  const name = $("#bkName").value.trim() || "Paper book";
+  const sp = parseInt($("#bkPage").value, 10);
+  hide("#bookOv");
+  startSession({ mode: "book", name, startPage: sp > 0 ? sp : null });
+};
 $("#recent").addEventListener("click", async e => {
-  const o = e.target.dataset.open, d = e.target.dataset.del;
+  const o = e.target.dataset.open, d = e.target.dataset.del, bk = e.target.dataset.book, bd = e.target.dataset.bdel;
+  if (bk != null) { const b = load(K_BOOKS, [])[+bk]; if (b) openBookForm(b.name, b.page); return; }
+  if (bd != null) { const l = load(K_BOOKS, []); l.splice(+bd, 1); save(K_BOOKS, l); renderRecent(); return; }
   if (d) { try { await idb.del(d); } catch (x) {} renderRecent(); return; }
   if (o) {
     unlockAudio();
@@ -464,7 +535,13 @@ $("#pdfIn").addEventListener("change", e => {
   rememberPdf(f, key);
   startSession({ mode: "pdf", blob: f, name: f.name, key });
 });
-$("#bookBtn").onclick = () => { unlockAudio(); startSession({ mode: "book" }); };
+// screen dimming for paper book mode (any touch wakes it)
+let lastTouchT = performance.now();
+const setDim = on => $("#dimmer").classList.toggle("on", !!on);
+["touchstart", "mousedown", "keydown"].forEach(ev => document.addEventListener(ev, () => {
+  lastTouchT = performance.now();
+  if ($("#dimmer").classList.contains("on")) setDim(false);
+}, { passive: true, capture: true }));
 
 // ============ audio / voice / wake ============
 function unlockAudio() {
@@ -652,12 +729,15 @@ async function startSession(opts) {
   thresholds();
   S = newState(opts.mode);
   S.pdfName = opts.name || "";
+  S.startPage = opts.startPage || null;
   const sess = $("#session");
-  sess.classList.toggle("reading", opts.mode === "pdf"); sess.classList.remove("panel");
+  sess.classList.add("reading"); sess.classList.toggle("book", opts.mode === "book"); sess.classList.remove("panel");
   ["#reader", "#hud", "#pbar"].forEach(id => opts.mode === "pdf" ? show(id) : hide(id));
+  opts.mode === "book" ? show("#bookView") : hide("#bookView");
+  $("#bvBook").textContent = "📖 " + (opts.name || "Paper book") + (S.startPage ? ` · from p. ${S.startPage}` : "");
   hide("#home"); show("#session");
   $("#log").innerHTML = "";
-  showPreview = opts.mode !== "pdf";
+  showPreview = false; lastTouchT = performance.now();
   keepAwake();
   beginCalibration();
   running = true; loop();
@@ -665,6 +745,7 @@ async function startSession(opts) {
 }
 function beginCalibration() {
   S.calib = { phase: 0, until: performance.now() + 6000, f: [0, 0, 0], n: 0, blinks: [], poses: [] };
+  setDim(false);
   show("#calibOv");
 }
 function finishCalib(now) {
@@ -683,7 +764,9 @@ const pause = () => { running = false; cancelAnimationFrame(rafId); show("#pause
 $("#pauseBtn").onclick = pause; $("#hudPause").onclick = pause;
 $("#resumeBtn").onclick = () => { hide("#pauseOv"); if (!S) return; S.prevT = null; S.noFaceMs = 0; S.closedMs = 0; S.awayMs = 0; S.samples = []; S.lastTick = performance.now(); running = true; logEvent("info", "Resumed"); loop(); };
 $("#endBtn").onclick = endSession; $("#hudEnd").onclick = endSession;
-$("#hudPanel").onclick = () => { const s = $("#session"); s.classList.toggle("panel"); showPreview = s.classList.contains("panel"); };
+const togglePanel = () => { const s = $("#session"); s.classList.toggle("panel"); showPreview = s.classList.contains("panel"); };
+$("#hudPanel").onclick = togglePanel; $("#bvDetails").onclick = togglePanel;
+$("#bvPause").onclick = pause; $("#bvEnd").onclick = endSession;
 $("#closePanel").onclick = () => { $("#session").classList.remove("panel"); showPreview = false; };
 function zonedOut() {
   if (!S || !S.base) return;
@@ -693,10 +776,10 @@ function zonedOut() {
   if (recent.length) model.labels++;
   S.selfCaught++; saveModel();
   logEvent("self", "You caught yourself drifting. AI trained on it");
-  $("#zoneBtn").textContent = "✓ Got it, learning from that"; $("#hudZone").textContent = "✓";
-  setTimeout(() => { $("#zoneBtn").textContent = "🙋 I just zoned out (teach the AI)"; $("#hudZone").textContent = "🙋"; }, 2500);
+  $("#zoneBtn").textContent = "✓ Got it, learning from that"; $("#hudZone").textContent = "✓"; $("#bvZone").textContent = "✓ Learning from that";
+  setTimeout(() => { $("#zoneBtn").textContent = "🙋 I just zoned out (teach the AI)"; $("#hudZone").textContent = "🙋"; $("#bvZone").textContent = "🙋 I zoned out"; }, 2500);
 }
-$("#zoneBtn").onclick = zonedOut; $("#hudZone").onclick = zonedOut;
+$("#zoneBtn").onclick = zonedOut; $("#hudZone").onclick = zonedOut; $("#bvZone").onclick = zonedOut;
 
 function endSession() {
   running = false; cancelAnimationFrame(rafId);
@@ -707,13 +790,34 @@ function endSession() {
   try { wakeLock && wakeLock.release(); } catch (e) {}
   if (!S) return;
   if (S.minAcc.n) S.minutes.push(S.minAcc.s / S.minAcc.n);
-  const focus = S.totalSec ? Math.round(100 * S.focusedSec / S.totalSec) : 0;
   saveModel();
-  if (S.totalSec >= 30) { const h = load(K_HIST, []); h.unshift({ d: Date.now(), dur: S.totalSec, focus, alerts: S.alerts.length, name: S.pdfName }); save(K_HIST, h.slice(0, 50)); }
+  setDim(false);
+  if (S.mode === "book") {
+    $("#endPage").value = "";
+    $("#endPage").placeholder = S.startPage ? `You started on p. ${S.startPage}` : "Page number";
+    show("#pageAskOv");
+  } else showSummary(null);
+}
+$("#epSave").onclick = () => { const v = parseInt($("#endPage").value, 10); hide("#pageAskOv"); showSummary(v > 0 ? v : null); };
+$("#epSkip").onclick = () => { hide("#pageAskOv"); showSummary(null); };
+function showSummary(endPage) {
+  const focus = S.totalSec ? Math.round(100 * S.focusedSec / S.totalSec) : 0;
+  let pagesTxt = "", pagesRead = null;
+  if (S.mode === "pdf" && S.pagesSeen.size) { const ps = [...S.pagesSeen]; pagesTxt = `📄 Pages ${Math.min(...ps)}–${Math.max(...ps)} of ${S.pdfName}`; }
+  else if (S.mode === "book") {
+    if (endPage && S.startPage && endPage > S.startPage) {
+      pagesRead = endPage - S.startPage;
+      const hrs = S.totalSec / 3600;
+      pagesTxt = `📖 ${S.pdfName}: pages ${S.startPage}–${endPage} · ${pagesRead} pages` + (hrs > 0.05 ? ` · ${Math.round(pagesRead / hrs)} pages/hour` : "");
+    } else if (endPage) pagesTxt = `📖 ${S.pdfName}: reached page ${endPage}`;
+    else pagesTxt = `📖 ${S.pdfName}`;
+    rememberBook(S.pdfName, endPage || S.startPage);
+  }
+  if (S.totalSec >= 30) { const h = load(K_HIST, []); h.unshift({ d: Date.now(), dur: S.totalSec, focus, alerts: S.alerts.length, name: S.pdfName, pages: pagesRead }); save(K_HIST, h.slice(0, 50)); }
   $("#sDur").textContent = S.totalSec >= 3600 ? (S.totalSec / 3600).toFixed(1) + "h" : Math.round(S.totalSec / 60) + "m";
   $("#sFocus").textContent = focus + "%";
   $("#sAlerts").textContent = S.alerts.length;
-  if (S.mode === "pdf" && S.pagesSeen.size) { const ps = [...S.pagesSeen]; $("#sPages").textContent = `📄 Pages ${Math.min(...ps)}–${Math.max(...ps)} of ${esc(S.pdfName)}`; } else $("#sPages").textContent = "";
+  $("#sPages").textContent = pagesTxt;
   const by = {}; S.alerts.forEach(a => by[a.type] = (by[a.type] || 0) + 1);
   const parts = Object.entries(by).map(([k, v]) => `${ALERTS[k].emoji} ${ALERTS[k].short} ×${v}`);
   if (S.selfCaught) parts.push(`🙋 self-caught ×${S.selfCaught}`);
@@ -722,7 +826,8 @@ function endSession() {
   show("#sumOv");
 }
 $("#sumDone").onclick = () => {
-  hide("#sumOv"); hide("#session"); show("#home");
+  hide("#sumOv"); hide("#session"); hide("#bookView"); show("#home"); setDim(false);
+  $("#session").classList.remove("reading", "book", "panel");
   for (const n of [...R.tasks.keys()]) unrenderPage(n);
   if (R.pdf) { try { R.pdf.destroy(); } catch (e) {} R.pdf = null; }
   pagesEl.innerHTML = "";
@@ -786,6 +891,12 @@ function processFrame(fr, hr, newHands, now) {
       const c = { x: mean(hs.map(h => h[9].x)), y: mean(hs.map(h => h[9].y)) };
       S.handMot = S.handPrevC ? Math.hypot(c.x - S.handPrevC.x, c.y - S.handPrevC.y) : 0;
       S.handPrevC = c; S.handC = c;
+      // paper book: a quick sideways hand sweep looks like a page turn (counts as reading activity for the AI)
+      S.hx.push({ t: now, x: c.x }); while (S.hx.length && now - S.hx[0].t > 800) S.hx.shift();
+      if (S.mode === "book" && S.hx.length >= 4 && now - S.lastFlip > 2000) {
+        const xs = S.hx.map(h => h.x);
+        if (Math.max(...xs) - Math.min(...xs) > 0.18) { S.lastFlip = now; S.touches++; S.flips++; S.hx = []; }
+      }
       let onFace = false;
       if (present && S.bbox) {
         const w = S.bbox.x1 - S.bbox.x0, h = S.bbox.y1 - S.bbox.y0;
@@ -793,7 +904,7 @@ function processFrame(fr, hr, newHands, now) {
         onFace = hs.some(hd => [0, 5, 9, 13, 17].some(i => hd[i].x > bx0 && hd[i].x < bx1 && hd[i].y > by0 && hd[i].y < by1));
       }
       S.handOnFace = onFace;
-    } else { S.handC = null; S.handPrevC = null; S.handMot = 0; S.handOnFace = false; }
+    } else { S.handC = null; S.handPrevC = null; S.handMot = 0; S.handOnFace = false; S.hx = []; }
   }
 
   // ---- calibration: pose 1 = your screen/book, pose 2 = your notebook ----
@@ -904,6 +1015,7 @@ function tick(now) {
   S.minAcc.s += inst; S.minAcc.n++;
   if (S.minAcc.n >= 60) { S.minutes.push(S.minAcc.s / S.minAcc.n); S.minAcc = { s: 0, n: 0 }; }
   if (S.totalSec % 60 === 0) saveModel();
+  if (S.mode === "book" && !alertOpen && !$("#session").classList.contains("panel") && performance.now() - lastTouchT > 25000) setDim(true);
   updateUI();
 }
 
@@ -930,6 +1042,7 @@ function fire(type, z) {
   $("#aYes").textContent = type === "phone" ? "Yes, putting it away" : type === "gone" ? "OK, I'm back" : "Yes, I drifted";
   $("#aNo").style.display = type === "gone" ? "none" : "";
   $("#aNo").textContent = type === "away" ? "No, that's my notes" : type === "phone" ? "No phone there" : "No, I was focused";
+  setDim(false); lastTouchT = performance.now();
   show("#alertOv");
   alertOpen = true; alertType = type; alertShownAt = now; alertLastRepeat = now; alertZ = z;
   chime(A.level); say(A.voice);
@@ -976,6 +1089,14 @@ function updateUI() {
   $("#hudDot").style.background = col; $("#hudState").textContent = label;
   const arc = $("#ringArc"); arc.setAttribute("stroke", col); arc.setAttribute("stroke-dashoffset", String(615.75 * (1 - sc / 100)));
   const st = $("#stateTxt"); st.textContent = label; st.style.color = col;
+  if (S.mode === "book") {
+    $("#bvNum").textContent = sc; $("#bvTime").textContent = fmt(S.totalSec);
+    const ba = $("#bvArc"); ba.setAttribute("stroke", col); ba.setAttribute("stroke-dashoffset", String(615.75 * (1 - sc / 100)));
+    const bs = $("#bvState"); bs.textContent = label; bs.style.color = col;
+    $("#bvHint").textContent = !S.present ? "I can't see your face. Check the iPad's angle."
+      : !baselineReady() ? `Learning your focus pattern… ${Math.round(clamp(model.n / 90, 0, 1) * 100)}%`
+      : "Eyes on your book. I'll nudge you if you drift. Tap anywhere to wake the screen.";
+  }
   chip("#cFace", S.present ? "In view" : "Not visible", S.present ? "ok" : "bad");
   chip("#cEyes", !S.present ? "—" : S.closedMs > 800 ? "Closing" : "Open", !S.present ? "mute" : S.closedMs > 800 ? "bad" : "ok");
   chip("#cHead", !S.present ? "—" : S.awayMs > 1500 ? "Looking away" : "On your work", !S.present ? "mute" : S.awayMs > 1500 ? "warn" : "ok");
