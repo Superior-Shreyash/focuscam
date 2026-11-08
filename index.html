@@ -100,6 +100,20 @@ input[type=text],input[type=number]{width:150px;background:#0c1220;border:1px so
 .pg{position:relative;width:100%;max-width:100%;margin:0 auto 10px;background:#fff;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,.35);overflow:hidden}
 .pg canvas{display:block;width:100%;height:100%}
 .pg .pn{position:absolute;inset:0;display:grid;place-items:center;color:#9aa3b5;font-size:20px}
+#pages{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.pg .ink{position:absolute;inset:0;width:100%;height:100%}
+#pages.fingerdraw .pg{touch-action:none}
+#inkBar{position:fixed;z-index:40;left:calc(10px + env(safe-area-inset-left));top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px;border-radius:22px;background:rgba(17,24,39,.95);border:1px solid var(--line);box-shadow:0 8px 28px rgba(0,0,0,.45);max-height:calc(100vh - 170px);overflow:auto}
+#inkBar button{width:42px;height:42px;border-radius:12px;background:transparent;font-size:20px;display:grid;place-items:center;flex:none}
+#inkBar button.on{background:var(--card2);box-shadow:inset 0 0 0 2px var(--accent)}
+#inkBar button:disabled{opacity:.3}
+#inkBar button.col{width:30px;height:30px;border-radius:50%;margin:3px 0;border:2px solid rgba(255,255,255,.25)}
+#inkBar button.col.on{box-shadow:0 0 0 3px #0a0e16,0 0 0 5px #fff}
+#inkBar .sz span{display:block;border-radius:50%;background:#e9eef8}
+#inkBar .sep{display:block;width:26px;height:1px;background:var(--line);margin:4px 0;flex:none}
+#inkColors,#inkSizes{display:flex;flex-direction:column;align-items:center}
+#toast{position:fixed;z-index:46;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);max-width:min(560px,90vw);text-align:center;background:rgba(17,24,39,.97);border:1px solid var(--line);padding:11px 16px;border-radius:14px;font-size:14.5px;opacity:0;transition:opacity .4s;pointer-events:none}
+#toast.on{opacity:1}
 #pages.dark .pg{background:#151515}
 #pages.dark canvas{filter:invert(.92) hue-rotate(180deg)}
 #hud{position:fixed;z-index:40;top:calc(10px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:7px 8px 7px 14px;border-radius:40px;background:rgba(17,24,39,.94);border:1px solid var(--line);box-shadow:0 8px 28px rgba(0,0,0,.45);white-space:nowrap;max-width:calc(100vw - 20px)}
@@ -178,6 +192,7 @@ input[type=text],input[type=number]{width:150px;background:#0c1220;border:1px so
       <ol class="steps">
         <li><b>Neural nets watch</b> your face (478 points + 52 expressions), eyes, head angle and both hands, about 15 times a second. A third model spots phones.</li>
         <li><b>Your personal AI model</b> combines that with how you read (scrolling, page turns, taps) and learns what <i>your</i> focus looks like. Anything unusual for you gets flagged.</li>
+        <li><b>Write on your PDFs</b> with Apple Pencil: pen, highlighter and eraser. Notes are saved with each PDF.</li>
         <li><b>You teach it.</b> Every alert asks "Did you drift?" Your answer retrains it, and it's saved on this iPad.</li>
       </ol>
       <p class="note">🔒 Everything runs on this iPad. No video or PDF is uploaded anywhere.</p>
@@ -219,8 +234,22 @@ input[type=text],input[type=number]{width:150px;background:#0c1220;border:1px so
     <button id="hudZone" title="I zoned out">🙋</button><button id="hudPanel" title="Focus details">📊</button><button id="hudPause" title="Pause">⏸</button><button class="end" id="hudEnd">End</button>
   </div>
   <div id="pbar" class="hidden">
-    <button id="zOut">−</button><span id="pageInd">1 / 1</span><button id="zIn">+</button><button id="darkBtn" title="Night mode">🌙</button>
+    <button id="inkBtn" title="Pencil tools">✏️</button><button id="zOut">−</button><span id="pageInd">1 / 1</span><button id="zIn">+</button><button id="darkBtn" title="Night mode">🌙</button>
   </div>
+  <div id="inkBar" class="hidden">
+    <button data-tool="pen" title="Pen">✒️</button>
+    <button data-tool="hl" title="Highlighter">🖍️</button>
+    <button data-tool="eraser" title="Eraser">🧽</button>
+    <i class="sep"></i>
+    <div id="inkColors"></div>
+    <i class="sep" id="sizeSep"></i>
+    <div id="inkSizes"></div>
+    <i class="sep"></i>
+    <button id="undoBtn" title="Undo">↶</button>
+    <button id="redoBtn" title="Redo">↷</button>
+    <button id="fingerBtn" title="Draw with finger too">👆</button>
+  </div>
+  <div id="toast"></div>
 
   <div id="bookView" class="hidden">
     <div class="bvTop"><span id="bvBook">📖 Paper book</span><b id="bvTime">0:00</b></div>
@@ -468,12 +497,17 @@ function renderHistory() {
 const idb = (() => {
   let dbp = null;
   const db = () => dbp || (dbp = new Promise((res, rej) => {
-    const r = indexedDB.open("focuscam", 1);
-    r.onupgradeneeded = () => r.result.createObjectStore("pdfs", { keyPath: "key" });
+    const r = indexedDB.open("focuscam", 2);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      if (!d.objectStoreNames.contains("pdfs")) d.createObjectStore("pdfs", { keyPath: "key" });
+      if (!d.objectStoreNames.contains("notes")) d.createObjectStore("notes", { keyPath: "key" });
+    };
     r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
   }));
-  const tx = async (mode, fn) => { const d = await db(); return new Promise((res, rej) => { const t = d.transaction("pdfs", mode); const req = fn(t.objectStore("pdfs")); t.oncomplete = () => res(req ? req.result : undefined); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); }); };
-  return { put: r => tx("readwrite", s => s.put(r)), get: k => tx("readonly", s => s.get(k)), all: () => tx("readonly", s => s.getAll()), del: k => tx("readwrite", s => s.delete(k)) };
+  const tx = async (store, mode, fn) => { const d = await db(); return new Promise((res, rej) => { const t = d.transaction(store, mode); const req = fn(t.objectStore(store)); t.oncomplete = () => res(req ? req.result : undefined); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); }); };
+  const api = store => ({ put: r => tx(store, "readwrite", s => s.put(r)), get: k => tx(store, "readonly", s => s.get(k)), all: () => tx(store, "readonly", s => s.getAll()), del: k => tx(store, "readwrite", s => s.delete(k)) });
+  return { ...api("pdfs"), notes: api("notes") };
 })();
 async function rememberPdf(file, key) {
   try {
@@ -571,7 +605,9 @@ function say(text) {
   try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance((settings.name ? settings.name + ", " : "") + text); u.rate = 1.02; speechSynthesis.speak(u); } catch (e) {}
 }
 async function keepAwake() { try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {} }
+window.addEventListener("pagehide", () => { if (R.pdf) flushNotes(); });
 document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden" && R.pdf) flushNotes();
   if (!S) return;
   if (document.visibilityState === "visible") { keepAwake(); video.play().catch(() => {}); S.prevT = null; if (running) logEvent("info", "Back in FocusCam. Tracking resumed"); }
 });
@@ -633,6 +669,8 @@ async function openPdf(blob, name, key) {
     d.innerHTML = `<div class="pn">${i}</div>`; frag.appendChild(d); R.els.push(d);
   }
   pagesEl.appendChild(frag);
+  R.notes = {}; R.ink = new Map(); INK.undo = []; INK.redo = []; INK.active = null;
+  try { const rec = await idb.notes.get(key); if (rec && rec.pages) R.notes = rec.pages; } catch (e) {}
   applyZoom();
   R.startPage = load(K_PAGES, {})[key] || 1;
 }
@@ -661,11 +699,14 @@ async function renderPage(n) {
     await task.promise;
     if (R.tasks.get(n) !== task) return;
     el.innerHTML = ""; el.appendChild(c);
+    attachInk(n, el, c.width, c.height);
   } catch (e) { if (R.tasks.get(n) === null) R.tasks.delete(n); }
 }
 function unrenderPage(n) {
   const t = R.tasks.get(n); if (t && t.cancel) { try { t.cancel(); } catch (e) {} }
   R.tasks.delete(n);
+  const ink = R.ink && R.ink.get(n);
+  if (ink) { ink.canvas.width = 0; ink.canvas.height = 0; ink.cache.width = 0; ink.cache.height = 0; R.ink.delete(n); }
   const el = R.els[n - 1]; if (!el) return;
   const c = el.querySelector("canvas"); if (c) { c.width = 0; c.height = 0; }      // frees iPad canvas memory
   el.innerHTML = `<div class="pn">${n}</div>`;
@@ -701,6 +742,159 @@ $("#darkBtn").onclick = () => { R.dark = !R.dark; pagesEl.classList.toggle("dark
 $("#pageInd").onclick = () => { reader.scrollBy({ top: reader.clientHeight * 0.9, behavior: "smooth" }); };
 window.addEventListener("resize", () => { if (R.pdf && S && S.mode === "pdf") { const keep = R.cur; for (const n of [...R.tasks.keys()]) unrenderPage(n); requestAnimationFrame(() => { goToPage(keep); renderNear(); }); } });
 
+// ============ Apple Pencil ink ============
+// Strokes are stored in page-relative units (x and y divided by page width), so they stay put at any zoom.
+// Pencil always writes; fingers scroll unless "draw with finger" is on.
+const PEN_COLORS = ["#111111", "#1f5fd6", "#d62f3a", "#1e9e5a"];
+const HL_COLORS = ["#ffd400", "#7be36b", "#ff8fc8", "#6fd3ff"];
+const SIZES = { pen: [0.0014, 0.0022, 0.0036], hl: [0.012, 0.019, 0.028], eraser: [0.008, 0.014, 0.024] };
+const INK = { tool: "pen", penColor: PEN_COLORS[0], hlColor: HL_COLORS[0], size: 1, finger: false, open: false, active: null, undo: [], redo: [], saveTimer: 0 };
+{ const s = load(K_VIEW, {}).ink || {}; for (const k of ["tool", "penColor", "hlColor", "size", "finger"]) if (s[k] != null) INK[k] = s[k]; }
+function saveInkPrefs() { const v = load(K_VIEW, {}); v.ink = { tool: INK.tool, penColor: INK.penColor, hlColor: INK.hlColor, size: INK.size, finger: INK.finger }; save(K_VIEW, v); }
+
+function attachInk(n, el, W, H) {
+  const canvas = document.createElement("canvas"); canvas.className = "ink"; canvas.width = W; canvas.height = H;
+  const cache = document.createElement("canvas"); cache.width = W; cache.height = H;
+  el.appendChild(canvas);
+  R.ink.set(n, { canvas, ctx: canvas.getContext("2d"), cache, cctx: cache.getContext("2d"), W });
+  redrawCache(n);
+}
+function strokePath(g, s, W) {
+  const p = s.p; if (!p.length) return;
+  g.lineCap = "round"; g.lineJoin = "round"; g.strokeStyle = s.c; g.fillStyle = s.c;
+  if (s.t === "hl") {
+    g.save(); g.globalAlpha = 0.35; g.lineWidth = s.w * W;
+    g.beginPath(); g.moveTo(p[0][0] * W, p[0][1] * W);
+    for (let i = 1; i < p.length; i++) g.lineTo(p[i][0] * W, p[i][1] * W);
+    if (p.length === 1) g.lineTo(p[0][0] * W + 0.5, p[0][1] * W);
+    g.stroke(); g.restore(); return;
+  }
+  const wOf = q => Math.max(0.8, s.w * W * (0.45 + 0.9 * q));
+  if (p.length === 1) { g.beginPath(); g.arc(p[0][0] * W, p[0][1] * W, wOf(p[0][2]) / 2, 0, 6.2832); g.fill(); return; }
+  for (let i = 1; i < p.length; i++) {
+    const a = p[i - 1], b = p[i];
+    g.lineWidth = wOf((a[2] + b[2]) / 2);
+    g.beginPath(); g.moveTo(a[0] * W, a[1] * W); g.lineTo(b[0] * W, b[1] * W); g.stroke();
+  }
+}
+function redrawCache(n) {
+  const ink = R.ink.get(n); if (!ink) return;
+  ink.cctx.clearRect(0, 0, ink.cache.width, ink.cache.height);
+  for (const s of (R.notes[n] || [])) strokePath(ink.cctx, s, ink.W);
+  blit(n);
+}
+function blit(n, extra) {
+  const ink = R.ink.get(n); if (!ink) return;
+  ink.ctx.clearRect(0, 0, ink.canvas.width, ink.canvas.height);
+  ink.ctx.drawImage(ink.cache, 0, 0);
+  if (extra) strokePath(ink.ctx, extra, ink.W);
+}
+function scheduleNoteSave() {
+  clearTimeout(INK.saveTimer);
+  INK.saveTimer = setTimeout(flushNotes, 800);
+}
+function flushNotes() {
+  clearTimeout(INK.saveTimer);
+  if (!R.key || !R.notes) return;
+  for (const k of Object.keys(R.notes)) if (!R.notes[k].length) delete R.notes[k];
+  idb.notes.put({ key: R.key, pages: R.notes, t: Date.now() }).catch(() => {});
+}
+const inkAllowed = e => e.pointerType === "pen" || (e.pointerType === "touch" && INK.finger) || (e.pointerType === "mouse" && INK.open);
+function inkPoint(e, rect) {
+  const W = rect.width;
+  return [Math.round((e.clientX - rect.left) / W * 1e5) / 1e5, Math.round((e.clientY - rect.top) / W * 1e5) / 1e5,
+          e.pointerType === "pen" ? (e.pressure || 0.5) : 0.5];
+}
+pagesEl.addEventListener("pointerdown", e => {
+  if (INK.active || !inkAllowed(e) || !R.pdf) return;
+  const pg = e.target.closest && e.target.closest(".pg"); if (!pg) return;
+  const n = +pg.dataset.n; if (!R.ink.has(n)) return;
+  e.preventDefault();
+  try { pg.setPointerCapture(e.pointerId); } catch (x) {}
+  const a = INK.active = { id: e.pointerId, n, rect: pg.getBoundingClientRect(), erase: INK.tool === "eraser", removed: [], stroke: null, raf: 0 };
+  if (a.erase) eraseAt(e);
+  else { a.stroke = { t: INK.tool, c: INK.tool === "hl" ? INK.hlColor : INK.penColor, w: SIZES[INK.tool][INK.size], p: [] }; addInkPoints(e); }
+});
+pagesEl.addEventListener("pointermove", e => {
+  const a = INK.active; if (!a || e.pointerId !== a.id) return;
+  e.preventDefault();
+  if (a.erase) eraseAt(e); else addInkPoints(e);
+});
+pagesEl.addEventListener("pointerup", endInk);
+pagesEl.addEventListener("pointercancel", endInk);
+function addInkPoints(e) {
+  const a = INK.active;
+  const evs = (e.getCoalescedEvents && e.getCoalescedEvents()) || [];
+  for (const ev of (evs.length ? evs : [e])) a.stroke.p.push(inkPoint(ev, a.rect));
+  if (!a.raf) a.raf = requestAnimationFrame(() => { a.raf = 0; if (INK.active === a) blit(a.n, a.stroke); });
+}
+function eraseAt(e) {
+  const a = INK.active, q = inkPoint(e, a.rect), list = R.notes[a.n] || [];
+  const r = SIZES.eraser[INK.size];
+  let hit = false;
+  for (let i = list.length - 1; i >= 0; i--) {
+    const s = list[i];
+    if (s.p.some(pt => Math.hypot(pt[0] - q[0], pt[1] - q[1]) < r + s.w / 2)) { a.removed.push(s); list.splice(i, 1); hit = true; }
+  }
+  if (hit) redrawCache(a.n);
+}
+function endInk(e) {
+  const a = INK.active; if (!a || e.pointerId !== a.id) return;
+  INK.active = null; if (a.raf) cancelAnimationFrame(a.raf);
+  if (a.erase) { if (a.removed.length) { INK.undo.push({ t: "erase", n: a.n, items: a.removed }); INK.redo = []; } }
+  else if (a.stroke.p.length) {
+    (R.notes[a.n] = R.notes[a.n] || []).push(a.stroke);
+    INK.undo.push({ t: "add", n: a.n, s: a.stroke }); INK.redo = [];
+    const ink = R.ink.get(a.n); if (ink) { strokePath(ink.cctx, a.stroke, ink.W); blit(a.n); }
+    if (S) { S.touches += 2; S.inkStrokes = (S.inkStrokes || 0) + 1; }   // writing = active engagement for the AI
+  }
+  if (INK.undo.length > 200) INK.undo.shift();
+  scheduleNoteSave(); renderInkBar();
+}
+function applyOp(op, forward) {
+  const list = R.notes[op.n] = R.notes[op.n] || [];
+  const add = s => list.push(s), remove = s => { const i = list.indexOf(s); if (i >= 0) list.splice(i, 1); };
+  if (op.t === "add") forward ? add(op.s) : remove(op.s);
+  else forward ? op.items.forEach(remove) : op.items.forEach(add);
+  redrawCache(op.n);
+  scheduleNoteSave();
+}
+$("#undoBtn").onclick = () => { const op = INK.undo.pop(); if (!op) return; applyOp(op, false); INK.redo.push(op); renderInkBar(); };
+$("#redoBtn").onclick = () => { const op = INK.redo.pop(); if (!op) return; applyOp(op, true); INK.undo.push(op); renderInkBar(); };
+// Stop the page from scrolling under the Pencil (fingers still scroll)
+const stylusGuard = e => {
+  for (const t of e.changedTouches) {
+    if (t.touchType === "stylus" || (INK.finger && e.target.closest && e.target.closest(".pg"))) { e.preventDefault(); return; }
+  }
+};
+reader.addEventListener("touchstart", stylusGuard, { passive: false });
+reader.addEventListener("touchmove", stylusGuard, { passive: false });
+
+function renderInkBar() {
+  document.querySelectorAll("#inkBar [data-tool]").forEach(b => b.classList.toggle("on", b.dataset.tool === INK.tool));
+  const cols = INK.tool === "pen" ? PEN_COLORS : INK.tool === "hl" ? HL_COLORS : [];
+  const cur = INK.tool === "hl" ? INK.hlColor : INK.penColor;
+  $("#inkColors").innerHTML = cols.map(c => `<button class="col${c === cur ? " on" : ""}" data-color="${c}" style="background:${c}" title="Colour"></button>`).join("");
+  $("#sizeSep").style.display = cols.length ? "" : "none";
+  $("#inkSizes").innerHTML = [0, 1, 2].map(i => `<button class="sz${i === INK.size ? " on" : ""}" data-size="${i}" title="Size"><span style="width:${6 + i * 5}px;height:${6 + i * 5}px"></span></button>`).join("");
+  $("#undoBtn").disabled = !INK.undo.length; $("#redoBtn").disabled = !INK.redo.length;
+  $("#fingerBtn").classList.toggle("on", INK.finger);
+  pagesEl.classList.toggle("fingerdraw", INK.finger);
+  $("#inkBtn").style.background = INK.open ? "var(--accent)" : "";
+}
+$("#inkBar").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.tool) INK.tool = b.dataset.tool;
+  else if (b.dataset.color) { if (INK.tool === "hl") INK.hlColor = b.dataset.color; else INK.penColor = b.dataset.color; }
+  else if (b.dataset.size) INK.size = +b.dataset.size;
+  else if (b.id === "fingerBtn") { INK.finger = !INK.finger; toast(INK.finger ? "👆 Finger now draws. Turn this off to scroll with your finger." : "👆 Finger scrolls again. Only the Pencil draws."); }
+  else return;
+  saveInkPrefs(); renderInkBar();
+});
+$("#inkBtn").onclick = () => { INK.open = !INK.open; INK.open ? show("#inkBar") : hide("#inkBar"); renderInkBar(); };
+let toastT = 0;
+function toast(msg, ms = 3500) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), ms); }
+
 // ============ session control ============
 async function startSession(opts) {
   if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -734,6 +928,12 @@ async function startSession(opts) {
   sess.classList.add("reading"); sess.classList.toggle("book", opts.mode === "book"); sess.classList.remove("panel");
   ["#reader", "#hud", "#pbar"].forEach(id => opts.mode === "pdf" ? show(id) : hide(id));
   opts.mode === "book" ? show("#bookView") : hide("#bookView");
+  (opts.mode === "pdf" && INK.open) ? show("#inkBar") : hide("#inkBar");
+  renderInkBar();
+  if (opts.mode === "pdf") {
+    const v = load(K_VIEW, {});
+    if (!v.inkHint) { v.inkHint = true; save(K_VIEW, v); setTimeout(() => toast("✏️ Write on the PDF with your Apple Pencil anytime. Fingers still scroll. Tap ✏️ for highlighter, eraser and colours.", 7000), 12500); }
+  }
   $("#bvBook").textContent = "📖 " + (opts.name || "Paper book") + (S.startPage ? ` · from p. ${S.startPage}` : "");
   hide("#home"); show("#session");
   $("#sessLog").innerHTML = "";
@@ -784,7 +984,8 @@ $("#zoneBtn").onclick = zonedOut; $("#hudZone").onclick = zonedOut; $("#bvZone")
 function endSession() {
   running = false; cancelAnimationFrame(rafId);
   hideAlert(false);
-  ["#pauseOv", "#calibOv", "#thumb"].forEach(hide);
+  ["#pauseOv", "#calibOv", "#thumb", "#inkBar"].forEach(hide);
+  if (S && S.mode === "pdf") flushNotes();
   if (stream) stream.getTracks().forEach(t => t.stop());
   stream = null;
   try { wakeLock && wakeLock.release(); } catch (e) {}
