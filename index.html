@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FocusCam">
+<meta name="theme-color" content="#0a0e16">
+<title>FocusCam — AI study focus tracker</title>
+<style>
+:root{--bg:#0a0e16;--card:#111827;--card2:#172033;--line:#24304a;--text:#e9eef8;--mute:#8d9ab3;--ok:#3ee6a8;--warn:#ffbf47;--bad:#ff5d73;--accent:#7aa2ff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+button{font:inherit;color:inherit;border:0;cursor:pointer}
+.wrap{max-width:1040px;margin:0 auto;padding:22px 20px 48px}
+.hidden{display:none!important}
+h1{font-size:30px;margin:0;letter-spacing:-.02em}
+h2{font-size:15px;margin:0 0 12px;color:var(--mute);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#3ee6a8,#7aa2ff);display:grid;place-items:center;font-size:22px}
+.tag{color:var(--mute);margin:0 0 22px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.grid2{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px}
+.steps{margin:0;padding-left:20px;line-height:1.55;color:#cdd6e6}
+.steps b{color:var(--text)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #1c2538}
+.row:last-child{border-bottom:0}
+.row small{display:block;color:var(--mute);font-size:12.5px;margin-top:2px}
+.sw{position:relative;width:50px;height:30px;flex:none}
+.sw input{opacity:0;width:0;height:0}
+.sw span{position:absolute;inset:0;background:#2a3550;border-radius:30px;transition:.2s}
+.sw span:before{content:"";position:absolute;width:24px;height:24px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.sw input:checked+span{background:var(--ok)}
+.sw input:checked+span:before{transform:translateX(20px)}
+.seg{display:flex;background:#0c1220;border:1px solid var(--line);border-radius:12px;padding:3px}
+.seg button{flex:1;padding:8px 10px;border-radius:9px;background:transparent;color:var(--mute);font-weight:600;font-size:14px}
+.seg button.on{background:var(--card2);color:var(--text)}
+input[type=text]{width:150px;background:#0c1220;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:8px 10px;font-size:15px}
+.starts{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-top:18px}
+@media (max-width:600px){.starts{grid-template-columns:1fr}}
+.big{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:18px;border-radius:16px;font-size:19px;font-weight:700;background:linear-gradient(135deg,#3ee6a8,#5fc7ff);color:#04121a;cursor:pointer}
+.big.alt{background:var(--card2);color:var(--text);border:1px solid var(--line);font-size:16px}
+.btn{padding:10px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--line);font-weight:600;font-size:14px}
+.btn.bad{background:#3a1520;border-color:#5a2232;color:#ffb3bf}
+.btn.pri{background:var(--ok);color:#04121a;border-color:transparent}
+.btn.sm{padding:7px 11px;font-size:13px;border-radius:10px}
+.note{color:var(--mute);font-size:13px;line-height:1.5;margin-top:12px}
+.hist{list-style:none;margin:0;padding:0}
+.hist li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #1c2538;font-size:14px}
+.hist li:last-child{border-bottom:0}
+.hist .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.pill{font-size:12px;padding:3px 8px;border-radius:20px;background:#1c2538;color:var(--mute)}
+.ai-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
+.stat{background:#0c1220;border:1px solid var(--line);border-radius:12px;padding:10px}
+.stat b{display:block;font-size:20px}
+.stat span{font-size:12px;color:var(--mute)}
+/* session dashboard */
+.topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.timer{font-variant-numeric:tabular-nums;font-size:28px;font-weight:700;margin-right:auto}
+.drawerHead{display:none;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sess{display:grid;grid-template-columns:1.05fr 1fr;gap:16px}
+@media (max-width:820px){.sess{grid-template-columns:1fr}}
+.ringcard{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px 18px}
+.ring{position:relative;width:230px;height:230px}
+.ring svg{transform:rotate(-90deg)}
+.ring .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .num b{font-size:62px;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.ring .num span{color:var(--mute);font-size:14px}
+.state{margin-top:12px;font-size:20px;font-weight:700}
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px;width:100%}
+.chip{background:#0c1220;border:1px solid var(--line);border-radius:12px;padding:9px 10px}
+.chip span{display:block;font-size:11.5px;color:var(--mute);text-transform:uppercase;letter-spacing:.06em}
+.chip b{font-size:14.5px}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}.mute{color:var(--mute)}
+.preview{position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:4/3}
+.preview canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.dbg{font:12px ui-monospace,Menlo,monospace;color:var(--mute);margin-top:8px;min-height:16px}
+.aiblock{margin-top:14px}
+.aihead{display:flex;justify-content:space-between;align-items:baseline}
+#spark{width:100%;height:70px;display:block;margin-top:6px;background:#0c1220;border-radius:10px;border:1px solid var(--line)}
+.bar{height:6px;background:#1c2538;border-radius:6px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent);width:0}
+.log{list-style:none;padding:0;margin:0;font-size:14px}
+.log li{padding:6px 0;border-bottom:1px solid #1c2538;display:flex;gap:10px}
+.log li time{color:var(--mute);font-variant-numeric:tabular-nums;min-width:48px}
+.zone{width:100%;margin-top:12px;padding:13px;border-radius:12px;background:#1b2440;border:1px dashed #3a4a75;font-weight:600}
+/* camera thumbnail: always on screen so iPadOS keeps the camera running */
+#thumb{position:fixed;z-index:42;right:calc(14px + env(safe-area-inset-right));bottom:calc(14px + env(safe-area-inset-bottom));width:96px;height:72px;border-radius:12px;overflow:hidden;border:2px solid var(--line);background:#000;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+#thumb video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block}
+#thumbCover{position:absolute;inset:0;background:#111827;display:grid;place-items:center;font-size:12px;color:var(--mute);text-align:center;line-height:1.2}
+/* reader mode */
+#reader{position:fixed;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;background:#2a2f3a;padding:calc(64px + env(safe-area-inset-top)) 0 90px}
+#pages{width:100%;margin:0 auto;padding:0 10px}
+.pg{position:relative;width:100%;max-width:100%;margin:0 auto 10px;background:#fff;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,.35);overflow:hidden}
+.pg canvas{display:block;width:100%;height:100%}
+.pg .pn{position:absolute;inset:0;display:grid;place-items:center;color:#9aa3b5;font-size:20px}
+#pages.dark .pg{background:#151515}
+#pages.dark canvas{filter:invert(.92) hue-rotate(180deg)}
+#hud{position:fixed;z-index:40;top:calc(10px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:7px 8px 7px 14px;border-radius:40px;background:rgba(17,24,39,.94);border:1px solid var(--line);box-shadow:0 8px 28px rgba(0,0,0,.45);white-space:nowrap;max-width:calc(100vw - 20px)}
+#hud .dot{width:12px;height:12px;border-radius:50%;background:var(--ok);flex:none}
+#hud b{font-size:18px;font-variant-numeric:tabular-nums}
+#hud .st{font-size:14px;color:var(--mute);overflow:hidden;text-overflow:ellipsis}
+#hud .tm{font-size:14px;font-variant-numeric:tabular-nums;color:var(--mute);margin-right:4px}
+#hud button{background:var(--card2);border:1px solid var(--line);border-radius:20px;padding:7px 11px;font-size:14px;font-weight:600}
+#hud button.end{background:#3a1520;border-color:#5a2232;color:#ffb3bf}
+#pbar{position:fixed;z-index:40;bottom:calc(14px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:6px;border-radius:30px;background:rgba(17,24,39,.94);border:1px solid var(--line)}
+#pbar button{background:var(--card2);border:1px solid var(--line);border-radius:20px;min-width:40px;padding:7px 10px;font-weight:700}
+#pageInd{font-variant-numeric:tabular-nums;font-weight:600;padding:0 8px;min-width:84px;text-align:center}
+#session.reading #dash{position:fixed;z-index:45;top:0;right:0;bottom:0;width:min(420px,94vw);overflow:auto;background:var(--bg);border-left:1px solid var(--line);padding:calc(18px + env(safe-area-inset-top)) 16px 110px;transform:translateX(105%);transition:transform .25s ease;max-width:none;margin:0}
+#session.reading.panel #dash{transform:none}
+#session.reading .topbar{display:none}
+#session.reading .drawerHead{display:flex}
+#session.reading .sess{grid-template-columns:1fr}
+#session.reading .ring{width:190px;height:190px}
+#session.reading .ring svg{width:190px;height:190px}
+/* overlays */
+.ov{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(5,8,14,.86);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.box{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:26px;max-width:520px;width:100%;text-align:center}
+.box h3{margin:6px 0 8px;font-size:24px}
+.box p{color:#c3cde0;line-height:1.5;margin:0 0 16px}
+.count{font-size:64px;font-weight:800;font-variant-numeric:tabular-nums}
+.spin{width:44px;height:44px;border:4px solid #24304a;border-top-color:var(--ok);border-radius:50%;margin:0 auto 14px;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+#alertOv{background:radial-gradient(circle at 50% 40%,rgba(255,93,115,.35),rgba(5,8,14,.93) 70%)}
+#alertOv.soft{background:radial-gradient(circle at 50% 40%,rgba(255,191,71,.3),rgba(5,8,14,.93) 70%)}
+#alertOv .box{animation:pulse 1.4s ease-in-out infinite;border-color:#5a2232}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,93,115,.5)}50%{box-shadow:0 0 0 22px rgba(255,93,115,0)}}
+.emoji{font-size:64px;line-height:1}
+.fb{display:flex;gap:10px;margin-top:6px}
+.fb button{flex:1;padding:14px;border-radius:14px;font-weight:700;font-size:15px}
+.fb .y{background:var(--ok);color:#04121a}
+.fb .n{background:var(--card2);border:1px solid var(--line)}
+.fbnote{font-size:12.5px;color:var(--mute);margin-top:10px}
+#sumChart{width:100%;height:120px;background:#0c1220;border-radius:12px;border:1px solid var(--line);margin:12px 0}
+.sumgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="home" class="wrap">
+  <div class="brand"><div class="logo">🎯</div><h1>FocusCam</h1></div>
+  <p class="tag">A PDF reader with an AI study buddy built in. It learns how <i>you</i> look when you're focused and nudges you the moment you drift.</p>
+
+  <div class="starts">
+    <label class="big" id="openLbl">📄 Open a PDF &amp; start studying<input type="file" id="pdfIn" accept="application/pdf,.pdf" hidden></label>
+    <button class="big alt" id="bookBtn">📚 Paper book instead</button>
+  </div>
+
+  <div class="card" id="recentCard" style="margin-top:16px">
+    <h2>Continue reading</h2>
+    <ul class="hist" id="recent"><li class="mute">PDFs you open will appear here, so you can resume on the same page.</li></ul>
+  </div>
+
+  <div class="grid2" style="margin-top:16px">
+    <div class="card">
+      <h2>How it works</h2>
+      <ol class="steps">
+        <li><b>Neural nets watch</b> your face (478 points + 52 expressions), eyes, head angle and both hands, about 15 times a second. A third model spots phones.</li>
+        <li><b>Your personal AI model</b> combines that with how you read (scrolling, page turns, taps) and learns what <i>your</i> focus looks like. Anything unusual for you gets flagged.</li>
+        <li><b>You teach it.</b> Every alert asks "Did you drift?" Your answer retrains it, and it's saved on this iPad.</li>
+      </ol>
+      <p class="note">🔒 Everything runs on this iPad. No video or PDF is uploaded anywhere.</p>
+      <p class="note">📐 Use a stand so the front camera sees your face. If you solve on paper, calibration also learns your "looking at notebook" pose.</p>
+    </div>
+    <div class="card">
+      <h2>Settings</h2>
+      <div class="row"><div>Sensitivity<small>Strict nudges sooner</small></div>
+        <div class="seg" id="sensSeg"><button data-v="relaxed">Relaxed</button><button data-v="normal">Normal</button><button data-v="strict">Strict</button></div></div>
+      <div id="toggles"></div>
+      <div class="row"><div>Your name<small>Used in voice alerts (optional)</small></div><input type="text" id="nameIn" maxlength="20" placeholder="Name"></div>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-top:16px">
+    <div class="card">
+      <h2>Your AI focus model</h2>
+      <div class="ai-stats">
+        <div class="stat"><b id="mLabels">0</b><span>moments you taught it</span></div>
+        <div class="stat"><b id="mBase">0m</b><span>of focus studied</span></div>
+        <div class="stat"><b id="mAcc">—</b><span>alerts you confirmed</span></div>
+      </div>
+      <div class="bar"><i id="mBar"></i></div>
+      <p class="note" id="mNote"></p>
+      <button class="btn bad" id="resetModel" style="margin-top:6px">Reset AI model</button>
+    </div>
+    <div class="card">
+      <h2>Recent sessions</h2>
+      <ul class="hist" id="hist"><li class="mute">No sessions yet.</li></ul>
+    </div>
+  </div>
+</div>
+
+<!-- SESSION -->
+<div id="session" class="hidden">
+  <div id="reader" class="hidden"><div id="pages"></div></div>
+  <div id="hud" class="hidden">
+    <span class="dot" id="hudDot"></span><b id="hudScore">100</b><span class="st" id="hudState">Locked in</span><span class="tm" id="hudTime">0:00</span>
+    <button id="hudZone" title="I zoned out">🙋</button><button id="hudPanel" title="Focus details">📊</button><button id="hudPause" title="Pause">⏸</button><button class="end" id="hudEnd">End</button>
+  </div>
+  <div id="pbar" class="hidden">
+    <button id="zOut">−</button><span id="pageInd">1 / 1</span><button id="zIn">+</button><button id="darkBtn" title="Night mode">🌙</button>
+  </div>
+
+  <div id="dash" class="wrap">
+    <div class="drawerHead"><h2 style="margin:0">Focus details</h2><button class="btn sm" id="closePanel">Close ✕</button></div>
+    <div class="topbar">
+      <div class="timer" id="timer">0:00</div>
+      <button class="btn" id="recalBtn">Recalibrate</button>
+      <button class="btn" id="camBtn">Hide camera</button>
+      <button class="btn" id="pauseBtn">Pause</button>
+      <button class="btn bad" id="endBtn">End</button>
+    </div>
+    <div class="sess">
+      <div class="card ringcard">
+        <div class="ring">
+          <svg width="230" height="230" viewBox="0 0 230 230">
+            <circle cx="115" cy="115" r="98" stroke="#1c2538" stroke-width="16" fill="none"/>
+            <circle id="ringArc" cx="115" cy="115" r="98" stroke="#3ee6a8" stroke-width="16" fill="none" stroke-linecap="round" stroke-dasharray="615.75" stroke-dashoffset="0"/>
+          </svg>
+          <div class="num"><b id="scoreNum">100</b><span>focus score</span></div>
+        </div>
+        <div class="state" id="stateTxt">Locked in</div>
+        <div class="chips">
+          <div class="chip"><span>Face</span><b id="cFace">—</b></div>
+          <div class="chip"><span>Eyes</span><b id="cEyes">—</b></div>
+          <div class="chip"><span>Head</span><b id="cHead">—</b></div>
+          <div class="chip"><span>Mind (AI)</span><b id="cMind">—</b></div>
+          <div class="chip"><span>Hands</span><b id="cHands">—</b></div>
+          <div class="chip"><span>Phone</span><b id="cPhone">—</b></div>
+        </div>
+        <button class="zone" id="zoneBtn">🙋 I just zoned out (teach the AI)</button>
+      </div>
+      <div class="card">
+        <div class="preview" id="previewBox"><canvas id="overlay"></canvas></div>
+        <div class="dbg" id="dbg"></div>
+        <div class="aiblock">
+          <div class="aihead"><h2 style="margin:0">AI drift probability</h2><b id="pTxt">—</b></div>
+          <canvas id="spark" width="600" height="140"></canvas>
+          <div id="learnWrap" class="note" style="margin-top:8px">Learning your focus pattern… <span id="learnPct">0%</span><div class="bar"><i id="learnBar"></i></div></div>
+        </div>
+        <div class="row" style="margin-top:8px;border:0"><span class="mute" style="font-size:14px">Recalibrate if you move the iPad</span><button class="btn sm" id="recalBtn2">Recalibrate</button></div>
+        <h2 style="margin-top:10px">Session log</h2>
+        <ul class="log" id="log"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="thumb" class="hidden"><video id="video" playsinline muted autoplay></video><div id="thumbCover" class="hidden">🎥<br>tracking</div></div>
+
+<!-- OVERLAYS -->
+<div class="ov hidden" id="loadOv"><div class="box"><div class="spin"></div><h3>Getting ready</h3><p id="loadMsg">Loading AI models (about 15 MB the first time, then cached).</p></div></div>
+<div class="ov hidden" id="calibOv"><div class="box"><div class="count" id="calibCount">6</div><h3 id="calibTitle">Calibrating</h3><p id="calibMsg"></p><button class="btn hidden" id="calibSkip">Skip, I don't use a notebook</button></div></div>
+<div class="ov hidden" id="pauseOv"><div class="box"><div class="emoji">☕</div><h3>Paused</h3><p>Take your break. Tracking is off until you resume.</p><button class="btn pri" id="resumeBtn" style="padding:14px 26px;font-size:16px">Resume</button></div></div>
+<div class="ov hidden" id="errOv"><div class="box"><div class="emoji">⚠️</div><h3 id="errTitle">Something went wrong</h3><p id="errMsg"></p><button class="btn" id="errClose">OK</button></div></div>
+<div class="ov hidden" id="alertOv"><div class="box">
+  <div class="emoji" id="aEmoji">😴</div><h3 id="aTitle">Eyes closing!</h3><p id="aTip"></p>
+  <div class="fb"><button class="y" id="aYes">Yes, I drifted</button><button class="n" id="aNo">No, I was focused</button></div>
+  <div class="fbnote">Your answer trains your personal AI model.</div>
+</div></div>
+<div class="ov hidden" id="sumOv"><div class="box">
+  <div class="emoji">🏁</div><h3>Session complete</h3>
+  <div class="sumgrid"><div class="stat"><b id="sDur">0m</b><span>studied</span></div><div class="stat"><b id="sFocus">0%</b><span>focused</span></div><div class="stat"><b id="sAlerts">0</b><span>nudges</span></div></div>
+  <canvas id="sumChart" width="600" height="160"></canvas>
+  <p id="sPages" style="font-size:14px;margin-bottom:6px"></p>
+  <p id="sBreak" style="font-size:14px"></p>
+  <button class="btn pri" id="sumDone" style="padding:14px 26px;font-size:16px">Done</button>
+</div></div>
+
+<script type="module">
+// ============ constants & storage ============
+const $ = s => document.querySelector(s);
+const MODEL = {
+  face: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+  hand: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+  obj:  "https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/int8/1/efficientdet_lite0.tflite"
+};
+const LIBS = [
+  ["https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14", "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"],
+  ["https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs", "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"],
+  ["https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3", "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"]
+];
+const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+const PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+const K_SET = "focuscam.settings.v2", K_HIST = "focuscam.history.v1", K_MODEL = "focuscam.model.v3", K_PAGES = "focuscam.pages.v1", K_VIEW = "focuscam.view.v1";
+const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
+const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+const DEF = { sens: "normal", eyes: true, away: true, drift: true, yawn: true, phone: true, gone: true, sound: true, voice: true, name: "" };
+let settings = { ...DEF, ...load(K_SET, {}) };
+const TOGGLES = [
+  ["drift", "AI zone-out detection", "Blank stares, slumping, stalled reading: anything unusual for you"],
+  ["eyes", "Eyes closing / dozing", "Adapts to how your eyes look when reading"],
+  ["away", "Looking away", "Head turned away from your screen or notebook"],
+  ["yawn", "Yawning", "Several yawns close together means you're tiring"],
+  ["phone", "Phone in view", "AI object detector looks for a phone"],
+  ["gone", "Leaving the desk", "Use Pause for real breaks"],
+  ["sound", "Alert sound", ""],
+  ["voice", "Voice alerts", "Speaks the nudge out loud"]
+];
+
+// ============ math helpers ============
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0;
+const std = a => { if (a.length < 2) return 0; const m = mean(a); return Math.sqrt(mean(a.map(x => (x - m) ** 2))); };
+const median = a => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+const norm3 = v => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const sigmoid = z => 1 / (1 + Math.exp(-z));
+const fmt = s => { s = Math.floor(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}` : `${m}:${String(x).padStart(2, "0")}`; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// ============ PERSONAL AI MODEL ============
+// Every second, a 10-second window of signals becomes a feature vector.
+// 1) An adaptive baseline learns YOUR normal (mean/variance per feature, keeps adapting).
+// 2) A logistic-regression drift classifier scores how unusual-in-a-bad-way you look,
+//    and is retrained online from your feedback ("Yes I drifted" / "No I was focused" / "I zoned out").
+const FEATS = ["eyeActivity", "headMotion", "gazeSpread", "headAngle", "eyeClosure", "blinkRate", "handMotion", "handOnFace", "jawOpen", "scrolling", "taps"];
+const FLOOR = [0.003, 0.002, 0.01, 2, 0.03, 2, 0.002, 0.05, 0.03, 0.05, 0.3];
+const PRIOR_W = [-0.9, -0.35, -0.5, 0.6, 0.9, 0.25, -0.4, 0.45, 0.35, -0.35, -0.2];
+const PRIOR_B = -3.0;
+function freshModel() {
+  return { v: 3, w: [...PRIOR_W], b: PRIOR_B, mu: FEATS.map(() => 0), var: FEATS.map(() => 0), n: 0,
+           labels: 0, confirms: 0, falses: 0, pOff: 0, tm: { eyes: 1, away: 1, yawn: 1, phone: 1, gone: 1, drift: 1 } };
+}
+let model = load(K_MODEL, null);
+if (!model || model.v !== 3) model = freshModel();
+const saveModel = () => save(K_MODEL, model);
+function baselineUpdate(x) {
+  model.n++;
+  const a = model.n < 300 ? 1 / model.n : 1 / 300;
+  for (let i = 0; i < x.length; i++) {
+    const d = x[i] - model.mu[i];
+    model.mu[i] += a * d;
+    model.var[i] = (1 - a) * (model.var[i] + a * d * d);
+  }
+}
+const zScore = x => x.map((v, i) => clamp((v - model.mu[i]) / Math.max(Math.sqrt(model.var[i]), FLOOR[i]), -4, 4));
+function predict(z) { let s = model.b; for (let i = 0; i < z.length; i++) s += model.w[i] * z[i]; return sigmoid(s); }
+function train(z, y, lr) {
+  const g = y - predict(z);
+  for (let i = 0; i < z.length; i++) model.w[i] = clamp(model.w[i] + lr * (g * z[i] - 0.002 * model.w[i]), -5, 5);
+  model.b = clamp(model.b + lr * g, -8, 4);
+}
+const baselineReady = () => model.n >= 90;
+
+// ============ state ============
+let vision = null, faceLm = null, handLm = null, objDet = null, modelsPromise = null;
+let stream = null, running = false, rafId = 0, S = null, T = {};
+let alertOpen = false, alertType = null, alertShownAt = 0, alertZ = null, alertLastRepeat = 0;
+let showPreview = true, wakeLock = null, actx = null;
+const video = $("#video"), cv = $("#overlay"), ctx = cv.getContext("2d");
+
+function thresholds() {
+  const m = { relaxed: 1.4, normal: 1, strict: 0.7 }[settings.sens] || 1;
+  const tm = model.tm;
+  let ang = 28;
+  if (model.n >= 60) ang = clamp(model.mu[3] + 3 * Math.max(Math.sqrt(model.var[3]), 3), 18, 50);
+  T = {
+    angle: ang * m * tm.away, awaySec: 8 * m * tm.away, closedSec: 2.5 * m * tm.eyes, goneSec: 20 * m * tm.gone,
+    yawnCount: Math.round(clamp((settings.sens === "strict" ? 2 : settings.sens === "relaxed" ? 4 : 3) * tm.yawn, 2, 6)),
+    pThr: clamp(({ relaxed: 0.8, normal: 0.7, strict: 0.6 }[settings.sens] || 0.7) + model.pOff, 0.45, 0.93),
+    driftSec: 6 * m * tm.drift
+  };
+}
+function newState(mode) {
+  return {
+    mode, totalSec: 0, focusedSec: 0, lastTick: 0, prevT: null,
+    present: false, smooth: null, blink: 0, angle: 0, f: null, bbox: null, closedThr: 0.6,
+    noFaceMs: 0, closedMs: 0, awayMs: 0, jawMs: 0, yawning: false, yawns: [], inBlink: false, blinkStart: 0, blinkTimes: [],
+    handC: null, handPrevC: null, handMot: 0, handOnFace: false, handsN: 0, lastHands: null,
+    phoneHits: [], phoneNow: false, phoneBox: null, lastObj: 0,
+    scrollAcc: 0, touches: 0,
+    samples: [], lastSample: 0, featHist: [], p: 0, pHist: [], driftMs: 0, lastNeg: 0,
+    score: 100, minutes: [], minAcc: { s: 0, n: 0 }, alerts: [], lastAlertAt: {}, lastAnyAlert: -1e9, goneAlerted: false,
+    base: null, calib: null, log: [], selfCaught: 0, pagesSeen: new Set()
+  };
+}
+
+// ============ home UI ============
+function renderSettings() {
+  document.querySelectorAll("#sensSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === settings.sens));
+  $("#toggles").innerHTML = TOGGLES.map(([k, t, s]) =>
+    `<div class="row"><div>${t}${s ? `<small>${s}</small>` : ""}</div><label class="sw"><input type="checkbox" data-k="${k}" ${settings[k] ? "checked" : ""}><span></span></label></div>`).join("");
+  $("#nameIn").value = settings.name || "";
+}
+$("#sensSeg").addEventListener("click", e => { const v = e.target.dataset.v; if (!v) return; settings.sens = v; save(K_SET, settings); renderSettings(); });
+$("#toggles").addEventListener("change", e => { const k = e.target.dataset.k; if (!k) return; settings[k] = e.target.checked; save(K_SET, settings); });
+$("#nameIn").addEventListener("input", e => { settings.name = e.target.value.trim(); save(K_SET, settings); });
+
+function renderModelCard() {
+  $("#mLabels").textContent = model.labels;
+  $("#mBase").textContent = model.n >= 3600 ? (model.n / 3600).toFixed(1) + "h" : Math.round(model.n / 60) + "m";
+  const tot = model.confirms + model.falses;
+  $("#mAcc").textContent = tot ? Math.round(100 * model.confirms / tot) + "%" : "—";
+  $("#mBar").style.width = (clamp(model.n / 90, 0, 1) * 50 + clamp(model.labels / 30, 0, 1) * 50) + "%";
+  $("#mNote").textContent = !baselineReady()
+    ? "New model. It needs about 2 minutes of normal studying to learn your baseline, then it gets sharper every time you answer an alert."
+    : model.labels < 10 ? "Baseline learned. Answer alerts honestly (and tap 🙋 when you catch yourself) so it learns your personal drift signs."
+    : "Personalised. It keeps adapting to you every session.";
+}
+let resetArmed = false;
+$("#resetModel").addEventListener("click", () => {
+  if (!resetArmed) { resetArmed = true; $("#resetModel").textContent = "Tap again to confirm reset"; setTimeout(() => { resetArmed = false; $("#resetModel").textContent = "Reset AI model"; }, 3000); return; }
+  model = freshModel(); saveModel(); renderModelCard(); resetArmed = false; $("#resetModel").textContent = "Model reset ✓";
+});
+function renderHistory() {
+  const h = load(K_HIST, []);
+  if (!h.length) { $("#hist").innerHTML = `<li class="mute">No sessions yet.</li>`; return; }
+  $("#hist").innerHTML = h.slice(0, 8).map(x => {
+    const d = new Date(x.d);
+    const day = d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+    const cls = x.focus >= 75 ? "ok" : x.focus >= 50 ? "warn" : "bad";
+    return `<li><span class="nm">${day} · ${Math.max(1, Math.round(x.dur / 60))} min${x.name ? " · " + esc(x.name) : ""}</span><span><b class="${cls}">${x.focus}%</b> <span class="pill">${x.alerts} nudges</span></span></li>`;
+  }).join("");
+}
+
+// ============ recent PDFs (IndexedDB) ============
+const idb = (() => {
+  let dbp = null;
+  const db = () => dbp || (dbp = new Promise((res, rej) => {
+    const r = indexedDB.open("focuscam", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("pdfs", { keyPath: "key" });
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+  const tx = async (mode, fn) => { const d = await db(); return new Promise((res, rej) => { const t = d.transaction("pdfs", mode); const req = fn(t.objectStore("pdfs")); t.oncomplete = () => res(req ? req.result : undefined); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); }); };
+  return { put: r => tx("readwrite", s => s.put(r)), get: k => tx("readonly", s => s.get(k)), all: () => tx("readonly", s => s.getAll()), del: k => tx("readwrite", s => s.delete(k)) };
+})();
+async function rememberPdf(file, key) {
+  try {
+    await idb.put({ key, name: file.name, size: file.size, t: Date.now(), blob: file });
+    const all = (await idb.all()).sort((a, b) => b.t - a.t);
+    for (const r of all.slice(5)) await idb.del(r.key);
+  } catch (e) {}
+}
+async function renderRecent() {
+  let all = [];
+  try { all = (await idb.all()).sort((a, b) => b.t - a.t); } catch (e) {}
+  const pages = load(K_PAGES, {});
+  if (!all.length) { $("#recent").innerHTML = `<li class="mute">PDFs you open will appear here, so you can resume on the same page.</li>`; return; }
+  $("#recent").innerHTML = all.map(r => `<li><span class="nm">📄 ${esc(r.name)}</span><span class="pill">p. ${pages[r.key] || 1}</span><button class="btn sm pri" data-open="${esc(r.key)}">Resume</button><button class="btn sm" data-del="${esc(r.key)}">✕</button></li>`).join("");
+}
+$("#recent").addEventListener("click", async e => {
+  const o = e.target.dataset.open, d = e.target.dataset.del;
+  if (d) { try { await idb.del(d); } catch (x) {} renderRecent(); return; }
+  if (o) {
+    unlockAudio();
+    let r = null; try { r = await idb.get(o); } catch (x) {}
+    if (!r || !r.blob) { showError("Couldn't reopen that PDF", "Please open it again from Files."); return; }
+    r.t = Date.now(); idb.put(r).catch(() => {});
+    startSession({ mode: "pdf", blob: r.blob, name: r.name, key: r.key });
+  }
+});
+$("#openLbl").addEventListener("click", unlockAudio);
+$("#pdfIn").addEventListener("change", e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  const key = f.name + "|" + f.size;
+  rememberPdf(f, key);
+  startSession({ mode: "pdf", blob: f, name: f.name, key });
+});
+$("#bookBtn").onclick = () => { unlockAudio(); startSession({ mode: "book" }); };
+
+// ============ audio / voice / wake ============
+function unlockAudio() {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+    const o = actx.createOscillator(), g = actx.createGain(); g.gain.value = 0.0001; o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + 0.05);
+  } catch (e) {}
+  try { if ("speechSynthesis" in window) { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); } } catch (e) {}
+}
+function chime(level) {
+  if (!settings.sound || !actx) return;
+  try {
+    if (actx.state === "suspended") actx.resume();
+    const notes = level === "high" ? [988, 740, 988, 740, 988] : [660, 880, 1046];
+    let t = actx.currentTime + 0.02;
+    for (const fq of notes) {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = "sine"; o.frequency.value = fq;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.4, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + 0.32); t += 0.19;
+    }
+  } catch (e) {}
+}
+function say(text) {
+  if (!settings.voice || !("speechSynthesis" in window)) return;
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance((settings.name ? settings.name + ", " : "") + text); u.rate = 1.02; speechSynthesis.speak(u); } catch (e) {}
+}
+async function keepAwake() { try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {} }
+document.addEventListener("visibilitychange", () => {
+  if (!S) return;
+  if (document.visibilityState === "visible") { keepAwake(); video.play().catch(() => {}); S.prevT = null; if (running) logEvent("info", "Back in FocusCam. Tracking resumed"); }
+});
+
+// ============ overlays ============
+const show = id => $(id).classList.remove("hidden");
+const hide = id => $(id).classList.add("hidden");
+function showError(title, msg) { $("#errTitle").textContent = title; $("#errMsg").textContent = msg; hide("#loadOv"); show("#errOv"); }
+$("#errClose").onclick = () => hide("#errOv");
+
+// ============ library loading ============
+async function loadModels() {
+  if (modelsPromise) return modelsPromise;
+  modelsPromise = (async () => {
+    let lib = null, wasm = null, lastErr = null;
+    for (const [u, w] of LIBS) { try { lib = await import(u); wasm = w; break; } catch (e) { lastErr = e; } }
+    if (!lib) throw new Error("Couldn't download the AI library. Check your internet connection. (" + (lastErr && lastErr.message) + ")");
+    const { FilesetResolver, FaceLandmarker, HandLandmarker, ObjectDetector } = lib;
+    $("#loadMsg").textContent = "Starting the vision engine…";
+    vision = await FilesetResolver.forVisionTasks(wasm);
+    const make = async (Cls, opts, label) => {
+      $("#loadMsg").textContent = `Loading ${label} model…`;
+      const { path, ...rest } = opts;
+      try { return await Cls.createFromOptions(vision, { ...rest, baseOptions: { modelAssetPath: path, delegate: "GPU" } }); }
+      catch (e) { return await Cls.createFromOptions(vision, { ...rest, baseOptions: { modelAssetPath: path, delegate: "CPU" } }); }
+    };
+    faceLm = await make(FaceLandmarker, { path: MODEL.face, runningMode: "VIDEO", numFaces: 1, outputFaceBlendshapes: true, outputFacialTransformationMatrixes: true }, "face & eye");
+    handLm = await make(HandLandmarker, { path: MODEL.hand, runningMode: "VIDEO", numHands: 2 }, "hand");
+    try { objDet = await make(ObjectDetector, { path: MODEL.obj, runningMode: "VIDEO", scoreThreshold: 0.35, maxResults: 3, categoryAllowlist: ["cell phone"] }, "phone"); }
+    catch (e) { objDet = null; }
+  })();
+  modelsPromise.catch(() => { modelsPromise = null; });
+  return modelsPromise;
+}
+let pdfjs = null;
+async function loadPdfLib() {
+  if (pdfjs) return pdfjs;
+  await new Promise((res, rej) => { const s = document.createElement("script"); s.src = PDFJS; s.onload = res; s.onerror = () => rej(new Error("Couldn't download the PDF reader. Check your internet connection.")); document.head.appendChild(s); });
+  pdfjs = window.pdfjsLib; pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+  return pdfjs;
+}
+
+// ============ PDF reader ============
+const R = { pdf: null, key: null, name: "", n: 0, ratio: 1.414, zoom: 1, dark: false, cur: 1, tasks: new Map(), els: [], lastTop: 0, saveT: 0, scheduled: false };
+const reader = $("#reader"), pagesEl = $("#pages");
+async function openPdf(blob, name, key) {
+  const lib = await loadPdfLib();
+  $("#loadMsg").textContent = "Opening " + name + "…";
+  const data = new Uint8Array(await blob.arrayBuffer());
+  R.pdf = await lib.getDocument({ data }).promise;
+  R.key = key; R.name = name; R.n = R.pdf.numPages;
+  const p1 = await R.pdf.getPage(1); const vp = p1.getViewport({ scale: 1 }); R.ratio = vp.height / vp.width;
+  const view = load(K_VIEW, {}); R.zoom = view.zoom || 1; R.dark = !!view.dark;
+  pagesEl.classList.toggle("dark", R.dark);
+  pagesEl.innerHTML = ""; R.els = []; R.tasks.clear();
+  const frag = document.createDocumentFragment();
+  for (let i = 1; i <= R.n; i++) {
+    const d = document.createElement("div"); d.className = "pg"; d.dataset.n = i; d.style.aspectRatio = `1 / ${R.ratio}`;
+    d.innerHTML = `<div class="pn">${i}</div>`; frag.appendChild(d); R.els.push(d);
+  }
+  pagesEl.appendChild(frag);
+  applyZoom();
+  R.startPage = load(K_PAGES, {})[key] || 1;
+}
+function applyZoom() { pagesEl.style.width = (R.zoom * 100) + "%"; }
+function goToPage(n) { const el = R.els[clamp(n, 1, R.n) - 1]; if (el) reader.scrollTop = el.offsetTop - 70; R.lastTop = reader.scrollTop; }
+function currentPage() {
+  const y = reader.scrollTop + reader.clientHeight * 0.35;
+  let lo = 0, hi = R.els.length - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (R.els[mid].offsetTop <= y) lo = mid; else hi = mid - 1; }
+  return lo + 1;
+}
+async function renderPage(n) {
+  if (R.tasks.has(n) || !R.pdf) return;
+  const el = R.els[n - 1]; if (!el || !el.clientWidth) return;
+  R.tasks.set(n, null);
+  try {
+    const page = await R.pdf.getPage(n);
+    if (!R.tasks.has(n)) return;
+    const vp1 = page.getViewport({ scale: 1 });
+    el.style.aspectRatio = `${vp1.width} / ${vp1.height}`;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const vp = page.getViewport({ scale: (el.clientWidth / vp1.width) * dpr });
+    const c = document.createElement("canvas"); c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+    const task = page.render({ canvasContext: c.getContext("2d"), viewport: vp });
+    R.tasks.set(n, task);
+    await task.promise;
+    if (R.tasks.get(n) !== task) return;
+    el.innerHTML = ""; el.appendChild(c);
+  } catch (e) { if (R.tasks.get(n) === null) R.tasks.delete(n); }
+}
+function unrenderPage(n) {
+  const t = R.tasks.get(n); if (t && t.cancel) { try { t.cancel(); } catch (e) {} }
+  R.tasks.delete(n);
+  const el = R.els[n - 1]; if (!el) return;
+  const c = el.querySelector("canvas"); if (c) { c.width = 0; c.height = 0; }      // frees iPad canvas memory
+  el.innerHTML = `<div class="pn">${n}</div>`;
+}
+function renderNear() {
+  if (!R.pdf) return;
+  const c = currentPage(); R.cur = c;
+  for (const n of [...R.tasks.keys()]) if (n < c - 3 || n > c + 4) unrenderPage(n);
+  for (let n = Math.max(1, c - 1); n <= Math.min(R.n, c + 2); n++) renderPage(n);
+  $("#pageInd").textContent = `${c} / ${R.n}`;
+  if (S) S.pagesSeen.add(c);
+  const now = Date.now();
+  if (now - R.saveT > 1000) { R.saveT = now; const p = load(K_PAGES, {}); p[R.key] = c; save(K_PAGES, p); }
+}
+reader.addEventListener("scroll", () => {
+  const top = reader.scrollTop;
+  if (S) S.scrollAcc += Math.abs(top - R.lastTop) / Math.max(1, reader.clientHeight);
+  R.lastTop = top;
+  if (!R.scheduled) { R.scheduled = true; setTimeout(() => { R.scheduled = false; renderNear(); }, 120); }
+}, { passive: true });
+reader.addEventListener("touchstart", () => { if (S) S.touches++; }, { passive: true });
+function rezoom(dz) {
+  const keep = R.cur;
+  R.zoom = clamp(Math.round((R.zoom + dz) * 4) / 4, 1, 3);
+  for (const n of [...R.tasks.keys()]) unrenderPage(n);
+  applyZoom();
+  const v = load(K_VIEW, {}); v.zoom = R.zoom; save(K_VIEW, v);
+  requestAnimationFrame(() => { goToPage(keep); renderNear(); });
+}
+$("#zIn").onclick = () => rezoom(0.25);
+$("#zOut").onclick = () => rezoom(-0.25);
+$("#darkBtn").onclick = () => { R.dark = !R.dark; pagesEl.classList.toggle("dark", R.dark); const v = load(K_VIEW, {}); v.dark = R.dark; save(K_VIEW, v); };
+$("#pageInd").onclick = () => { reader.scrollBy({ top: reader.clientHeight * 0.9, behavior: "smooth" }); };
+window.addEventListener("resize", () => { if (R.pdf && S && S.mode === "pdf") { const keep = R.cur; for (const n of [...R.tasks.keys()]) unrenderPage(n); requestAnimationFrame(() => { goToPage(keep); renderNear(); }); } });
+
+// ============ session control ============
+async function startSession(opts) {
+  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showError("Needs a secure link", "Safari only allows the camera on an https:// web address. Host this file (for example on GitHub Pages) and open that link in Safari.");
+    return;
+  }
+  show("#loadOv"); $("#loadMsg").textContent = "Loading AI models (about 15 MB the first time, then cached).";
+  try { await loadModels(); } catch (e) { showError("AI models didn't load", e.message || String(e)); return; }
+  if (opts.mode === "pdf") {
+    try { await openPdf(opts.blob, opts.name, opts.key); }
+    catch (e) { showError("Couldn't open that PDF", (e && e.message) || String(e)); return; }
+  }
+  $("#loadMsg").textContent = "Asking for camera access…";
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+  } catch (e) {
+    showError("Camera blocked", e.name === "NotAllowedError"
+      ? "Camera permission was denied. In Safari tap the “aA” button → Website Settings → Camera → Allow, then try again."
+      : "Couldn't open the camera: " + e.message);
+    return;
+  }
+  video.srcObject = stream;
+  show("#thumb");
+  try { await video.play(); } catch (e) {}
+  hide("#loadOv");
+  thresholds();
+  S = newState(opts.mode);
+  S.pdfName = opts.name || "";
+  const sess = $("#session");
+  sess.classList.toggle("reading", opts.mode === "pdf"); sess.classList.remove("panel");
+  ["#reader", "#hud", "#pbar"].forEach(id => opts.mode === "pdf" ? show(id) : hide(id));
+  hide("#home"); show("#session");
+  $("#log").innerHTML = "";
+  showPreview = opts.mode !== "pdf";
+  keepAwake();
+  beginCalibration();
+  running = true; loop();
+  if (opts.mode === "pdf") requestAnimationFrame(() => { goToPage(R.startPage || 1); renderNear(); });
+}
+function beginCalibration() {
+  S.calib = { phase: 0, until: performance.now() + 6000, f: [0, 0, 0], n: 0, blinks: [], poses: [] };
+  show("#calibOv");
+}
+function finishCalib(now) {
+  S.base = { poses: S.calib.poses };
+  S.closedThr = S.base.poses[0].thr;
+  S.calib = null; S.samples = []; S.lastTick = now; S.closedMs = 0; S.awayMs = 0;
+  hide("#calibOv"); hide("#calibSkip");
+  logEvent("info", `Calibrated (${S.base.poses.length} pose${S.base.poses.length > 1 ? "s" : ""}). Tracking your focus`);
+}
+$("#calibSkip").onclick = () => { if (S && S.calib && S.calib.phase === 1) finishCalib(performance.now()); };
+const recal = () => { if (S) { $("#session").classList.remove("panel"); beginCalibration(); } };
+$("#recalBtn").onclick = recal; $("#recalBtn2").onclick = recal;
+$("#camBtn").onclick = () => { showPreview = !showPreview; $("#previewBox").style.display = showPreview ? "" : "none"; $("#thumbCover").classList.toggle("hidden", showPreview); $("#camBtn").textContent = showPreview ? "Hide camera" : "Show camera"; };
+$("#thumb").onclick = () => { $("#thumbCover").classList.toggle("hidden"); };
+const pause = () => { running = false; cancelAnimationFrame(rafId); show("#pauseOv"); logEvent("info", "Paused"); };
+$("#pauseBtn").onclick = pause; $("#hudPause").onclick = pause;
+$("#resumeBtn").onclick = () => { hide("#pauseOv"); if (!S) return; S.prevT = null; S.noFaceMs = 0; S.closedMs = 0; S.awayMs = 0; S.samples = []; S.lastTick = performance.now(); running = true; logEvent("info", "Resumed"); loop(); };
+$("#endBtn").onclick = endSession; $("#hudEnd").onclick = endSession;
+$("#hudPanel").onclick = () => { const s = $("#session"); s.classList.toggle("panel"); showPreview = s.classList.contains("panel"); };
+$("#closePanel").onclick = () => { $("#session").classList.remove("panel"); showPreview = false; };
+function zonedOut() {
+  if (!S || !S.base) return;
+  const now = performance.now();
+  const recent = S.featHist.filter(h => now - h.t < 25000);
+  recent.forEach(h => train(h.z, 1, 0.06));
+  if (recent.length) model.labels++;
+  S.selfCaught++; saveModel();
+  logEvent("self", "You caught yourself drifting. AI trained on it");
+  $("#zoneBtn").textContent = "✓ Got it, learning from that"; $("#hudZone").textContent = "✓";
+  setTimeout(() => { $("#zoneBtn").textContent = "🙋 I just zoned out (teach the AI)"; $("#hudZone").textContent = "🙋"; }, 2500);
+}
+$("#zoneBtn").onclick = zonedOut; $("#hudZone").onclick = zonedOut;
+
+function endSession() {
+  running = false; cancelAnimationFrame(rafId);
+  hideAlert(false);
+  ["#pauseOv", "#calibOv", "#thumb"].forEach(hide);
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null;
+  try { wakeLock && wakeLock.release(); } catch (e) {}
+  if (!S) return;
+  if (S.minAcc.n) S.minutes.push(S.minAcc.s / S.minAcc.n);
+  const focus = S.totalSec ? Math.round(100 * S.focusedSec / S.totalSec) : 0;
+  saveModel();
+  if (S.totalSec >= 30) { const h = load(K_HIST, []); h.unshift({ d: Date.now(), dur: S.totalSec, focus, alerts: S.alerts.length, name: S.pdfName }); save(K_HIST, h.slice(0, 50)); }
+  $("#sDur").textContent = S.totalSec >= 3600 ? (S.totalSec / 3600).toFixed(1) + "h" : Math.round(S.totalSec / 60) + "m";
+  $("#sFocus").textContent = focus + "%";
+  $("#sAlerts").textContent = S.alerts.length;
+  if (S.mode === "pdf" && S.pagesSeen.size) { const ps = [...S.pagesSeen]; $("#sPages").textContent = `📄 Pages ${Math.min(...ps)}–${Math.max(...ps)} of ${esc(S.pdfName)}`; } else $("#sPages").textContent = "";
+  const by = {}; S.alerts.forEach(a => by[a.type] = (by[a.type] || 0) + 1);
+  const parts = Object.entries(by).map(([k, v]) => `${ALERTS[k].emoji} ${ALERTS[k].short} ×${v}`);
+  if (S.selfCaught) parts.push(`🙋 self-caught ×${S.selfCaught}`);
+  $("#sBreak").textContent = parts.length ? parts.join("   ") : "No drifts detected. Great session!";
+  drawSummary(S.minutes);
+  show("#sumOv");
+}
+$("#sumDone").onclick = () => {
+  hide("#sumOv"); hide("#session"); show("#home");
+  for (const n of [...R.tasks.keys()]) unrenderPage(n);
+  if (R.pdf) { try { R.pdf.destroy(); } catch (e) {} R.pdf = null; }
+  pagesEl.innerHTML = "";
+  renderHistory(); renderModelCard(); renderRecent(); S = null;
+};
+
+// ============ main loop ============
+let lastFaceT = 0, handTurn = false;
+function loop() {
+  if (!running) return;
+  rafId = requestAnimationFrame(loop);
+  const now = performance.now();
+  if (now - lastFaceT < 66 || video.readyState < 2 || !video.videoWidth) return;
+  lastFaceT = now;
+  let fr = null, hr = null, newHands = false;
+  try { fr = faceLm.detectForVideo(video, now); } catch (e) {}
+  handTurn = !handTurn;
+  if (handTurn) { try { hr = handLm.detectForVideo(video, now); S.lastHands = hr; newHands = true; } catch (e) {} } else hr = S.lastHands;
+  if (objDet && settings.phone && now - S.lastObj > 1500) {
+    S.lastObj = now;
+    try {
+      const r = objDet.detectForVideo(video, now);
+      const d = (r.detections || []).find(d => d.categories && d.categories.some(c => c.categoryName === "cell phone" && c.score >= 0.45));
+      S.phoneHits.push(!!d); if (S.phoneHits.length > 4) S.phoneHits.shift();
+      S.phoneNow = S.phoneHits.filter(Boolean).length >= 2;
+      S.phoneBox = d ? d.boundingBox : null;
+    } catch (e) {}
+  }
+  processFrame(fr, hr, newHands, now);
+  if (showPreview) draw(fr, hr);
+}
+
+function processFrame(fr, hr, newHands, now) {
+  const dt = S.prevT == null ? 0 : Math.min(250, now - S.prevT); S.prevT = now;
+  const present = !!(fr && fr.faceLandmarks && fr.faceLandmarks.length);
+  S.present = present;
+  let bs = {}, f = null;
+  if (present) {
+    for (const c of (fr.faceBlendshapes && fr.faceBlendshapes[0] ? fr.faceBlendshapes[0].categories : [])) bs[c.categoryName] = c.score;
+    const m = fr.facialTransformationMatrixes && fr.facialTransformationMatrixes[0] && fr.facialTransformationMatrixes[0].data;
+    if (m) f = norm3([m[8], m[9], m[10]]);       // direction your face is pointing
+    const lm = fr.faceLandmarks[0];
+    let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+    for (const p of lm) { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y; }
+    S.bbox = { x0, y0, x1, y1 }; S.nose = lm[1]; if (f) S.f = f;
+  }
+  const rawBlink = present ? ((bs.eyeBlinkLeft || 0) + (bs.eyeBlinkRight || 0)) / 2 : 0;
+  const gx = (((bs.eyeLookOutLeft || 0) + (bs.eyeLookInRight || 0)) - ((bs.eyeLookInLeft || 0) + (bs.eyeLookOutRight || 0))) / 2;
+  const gy = (((bs.eyeLookUpLeft || 0) + (bs.eyeLookUpRight || 0)) - ((bs.eyeLookDownLeft || 0) + (bs.eyeLookDownRight || 0))) / 2;
+  const jaw = bs.jawOpen || 0;
+  if (present) {
+    const a = 0.35, cur = { gx, gy, fx: f ? f[0] : 0, fy: f ? f[1] : 0, nx: S.nose.x, ny: S.nose.y, blink: rawBlink, jaw };
+    if (!S.smooth) S.smooth = { ...cur }; else for (const k in cur) S.smooth[k] += a * (cur[k] - S.smooth[k]);
+    S.blink = S.smooth.blink;
+  }
+
+  if (newHands) {
+    const hs = (hr && hr.landmarks) || [];
+    S.handsN = hs.length;
+    if (hs.length) {
+      const c = { x: mean(hs.map(h => h[9].x)), y: mean(hs.map(h => h[9].y)) };
+      S.handMot = S.handPrevC ? Math.hypot(c.x - S.handPrevC.x, c.y - S.handPrevC.y) : 0;
+      S.handPrevC = c; S.handC = c;
+      let onFace = false;
+      if (present && S.bbox) {
+        const w = S.bbox.x1 - S.bbox.x0, h = S.bbox.y1 - S.bbox.y0;
+        const bx0 = S.bbox.x0 - 0.15 * w, bx1 = S.bbox.x1 + 0.15 * w, by0 = S.bbox.y0, by1 = S.bbox.y1 + 0.15 * h;
+        onFace = hs.some(hd => [0, 5, 9, 13, 17].some(i => hd[i].x > bx0 && hd[i].x < bx1 && hd[i].y > by0 && hd[i].y < by1));
+      }
+      S.handOnFace = onFace;
+    } else { S.handC = null; S.handPrevC = null; S.handMot = 0; S.handOnFace = false; }
+  }
+
+  // ---- calibration: pose 1 = your screen/book, pose 2 = your notebook ----
+  if (S.calib) {
+    const c = S.calib;
+    if (present && f) { c.f[0] += f[0]; c.f[1] += f[1]; c.f[2] += f[2]; c.n++; c.blinks.push(rawBlink); }
+    $("#calibCount").textContent = Math.max(0, Math.ceil((c.until - now) / 1000));
+    $("#calibTitle").textContent = c.phase === 0 ? "Calibrating (1 of 2)" : "Calibrating (2 of 2)";
+    const target = c.phase === 0 ? (S.mode === "pdf" ? "your PDF on this screen" : "your book") : "your notebook, as if you're solving a problem";
+    $("#calibMsg").textContent = present ? `Look at ${target}. Sit the way you normally study.` : "I can't see your face. Tilt the iPad so your face is in view.";
+    $("#calibSkip").classList.toggle("hidden", c.phase !== 1);
+    if (now >= c.until) {
+      if (c.n < 25) { c.until = now + 3000; return; }
+      c.poses.push({ f: norm3(c.f), thr: clamp(median(c.blinks) + 0.3, 0.5, 0.92) });
+      if (c.phase === 0) { c.phase = 1; c.f = [0, 0, 0]; c.n = 0; c.blinks = []; c.until = now + 5000; chime("soft"); }
+      else finishCalib(now);
+    }
+    return;
+  }
+  if (!S.base) return;
+
+  // ---- fast detectors (their thresholds adapt from your feedback) ----
+  if (!present) { S.noFaceMs += dt; S.closedMs = 0; S.awayMs = Math.max(0, S.awayMs - dt * 2); }
+  else {
+    if (S.goneAlerted) { S.goneAlerted = false; logEvent("info", "Welcome back"); }
+    S.noFaceMs = 0;
+    if (f) {
+      let best = 180, thr = S.base.poses[0].thr;
+      for (const p of S.base.poses) { const a = Math.acos(clamp(dot3(f, p.f), -1, 1)) * 57.2958; if (a < best) { best = a; thr = p.thr; } }
+      S.angle = best; S.closedThr = thr;
+      S.awayMs = best > T.angle ? S.awayMs + dt : Math.max(0, S.awayMs - dt * 2);
+    }
+    const closed = S.blink > S.closedThr;
+    S.closedMs = closed ? S.closedMs + dt : Math.max(0, S.closedMs - dt * 4);
+    if (rawBlink > S.closedThr && !S.inBlink) { S.inBlink = true; S.blinkStart = now; }
+    else if (rawBlink < S.closedThr - 0.1 && S.inBlink) { S.inBlink = false; if (now - S.blinkStart < 600) S.blinkTimes.push(now); }
+    if (jaw > 0.5) { S.jawMs += dt; if (S.jawMs > 1200 && !S.yawning) { S.yawning = true; S.yawns.push(now); logEvent("yawnlog", "Yawn"); } }
+    else { S.jawMs = 0; S.yawning = false; }
+  }
+
+  // ---- 4 Hz samples for the AI ----
+  if (now - S.lastSample >= 250) {
+    S.lastSample = now;
+    const sm = S.smooth || {};
+    S.samples.push({ t: now, p: present, c: present && S.blink > S.closedThr, gx: sm.gx, gy: sm.gy, fx: sm.fx, fy: sm.fy, nx: sm.nx, ny: sm.ny,
+      ang: S.angle, jaw: sm.jaw || 0, h: S.handC ? { ...S.handC } : null, hf: S.handOnFace, sc: S.scrollAcc, tc: S.touches });
+    while (S.samples.length && now - S.samples[0].t > 30000) S.samples.shift();
+  }
+  if (now - S.lastTick >= 1000) { S.lastTick = now - S.lastTick > 3000 ? now : S.lastTick + 1000; tick(now); }
+}
+
+function features(now) {
+  const w = S.samples.filter(s => now - s.t <= 10000);
+  if (w.length < 28) return null;
+  const pres = w.filter(s => s.p).length / w.length;
+  if (pres < 0.85) return { pres };
+  let act = 0, head = 0, hm = 0, n = 0, nh = 0;
+  for (let i = 1; i < w.length; i++) {
+    const a = w[i - 1], b = w[i]; if (!a.p || !b.p) continue;
+    act += Math.abs(b.gx - a.gx) + Math.abs(b.gy - a.gy);
+    head += Math.abs(b.fx - a.fx) + Math.abs(b.fy - a.fy) + Math.abs(b.nx - a.nx) + Math.abs(b.ny - a.ny);
+    n++;
+    if (a.h && b.h) { hm += Math.hypot(b.h.x - a.h.x, b.h.y - a.h.y); nh++; }
+  }
+  const ps = w.filter(s => s.p);
+  S.blinkTimes = S.blinkTimes.filter(t => now - t < 60000);
+  const x = [n ? act / n : 0, n ? head / n : 0, std(ps.map(s => s.gx)) + std(ps.map(s => s.gy)), mean(ps.map(s => s.ang)),
+             ps.filter(s => s.c).length / ps.length, S.blinkTimes.filter(t => now - t < 30000).length * 2,
+             nh ? hm / nh : 0, ps.filter(s => s.hf).length / ps.length, mean(ps.map(s => s.jaw)),
+             w[w.length - 1].sc - w[0].sc, w[w.length - 1].tc - w[0].tc];
+  return { pres, x };
+}
+
+function tick(now) {
+  S.totalSec++;
+  thresholds();
+  const F = features(now);
+  let z = null;
+  if (F && F.x) {
+    z = zScore(F.x);
+    if (baselineReady()) S.p += 0.35 * (predict(z) - S.p); else S.p = 0;
+    S.featHist.push({ t: now, z }); while (S.featHist.length && now - S.featHist[0].t > 60000) S.featHist.shift();
+    if (!alertOpen && (S.p < 0.4 || !baselineReady()) && F.x[4] < 0.3 && S.awayMs < 1000) baselineUpdate(F.x);
+    if (baselineReady() && now - S.lastNeg > 45000 && S.p < 0.25 && now - S.lastAnyAlert > 120000) { S.lastNeg = now; train(z, 0, 0.01); }
+  } else S.p *= 0.9;
+  S.pHist.push(S.present ? S.p : null); if (S.pHist.length > 180) S.pHist.shift();
+
+  if (!alertOpen) {
+    if (settings.gone && S.noFaceMs > T.goneSec * 1000 && !S.goneAlerted) { if (fire("gone", z)) S.goneAlerted = true; }
+    if (settings.eyes && S.closedMs > T.closedSec * 1000) fire("eyes", z);
+    if (settings.away && S.awayMs > T.awaySec * 1000) fire("away", z);
+    S.yawns = S.yawns.filter(t => now - t < 300000);
+    if (settings.yawn && S.yawns.length >= T.yawnCount) { if (fire("yawn", z)) S.yawns = []; }
+    if (settings.phone && S.phoneNow) fire("phone", z);
+    S.driftMs = (baselineReady() && S.p > T.pThr) ? S.driftMs + 1000 : Math.max(0, S.driftMs - 2000);
+    if (settings.drift && S.driftMs >= T.driftSec * 1000) { if (fire("drift", z)) S.driftMs = 0; }
+  } else {
+    if (alertType === "eyes" && S.closedMs > T.closedSec * 1000 && now - alertLastRepeat > 7000) { alertLastRepeat = now; chime("high"); say("wake up!"); }
+    if (alertType === "gone" && S.present) hideAlert(false);
+  }
+
+  let inst = S.present ? 100 * (1 - (baselineReady() ? S.p : 0)) : 0;
+  if (S.present) { if (S.closedMs > 1200) inst = Math.min(inst, 25); if (S.awayMs > 2500) inst = Math.min(inst, 45); }
+  if (S.phoneNow) inst = Math.min(inst, 40);
+  inst = clamp(inst, 0, 100);
+  S.score += 0.25 * (inst - S.score);
+  if (inst >= 60) S.focusedSec++;
+  S.minAcc.s += inst; S.minAcc.n++;
+  if (S.minAcc.n >= 60) { S.minutes.push(S.minAcc.s / S.minAcc.n); S.minAcc = { s: 0, n: 0 }; }
+  if (S.totalSec % 60 === 0) saveModel();
+  updateUI();
+}
+
+// ============ alerts & feedback ============
+const ALERTS = {
+  eyes:  { emoji: "😴", short: "Dozing", title: "Eyes closing!", tip: "Sit up straight, take three deep breaths, and read the next line out loud.", voice: "wake up! Eyes open.", level: "high" },
+  away:  { emoji: "👀", short: "Looked away", title: "Eyes back on your work", tip: "You've been looking away for a while. Find where you left off and keep going.", voice: "eyes back on your work.", level: "soft" },
+  drift: { emoji: "🌫️", short: "Zoned out", title: "You've zoned out", tip: "Your AI model noticed you've stopped looking like your focused self. Re-engage: say the last idea you read in one sentence, or write the next step of the problem.", voice: "you've zoned out. Come back.", level: "soft" },
+  yawn:  { emoji: "🥱", short: "Tired", title: "You're getting tired", tip: "Several yawns in a few minutes. Stand up, stretch for 2 minutes and drink some water, then continue.", voice: "you seem tired. Take a two minute stretch break.", level: "soft" },
+  phone: { emoji: "📵", short: "Phone", title: "Phone spotted", tip: "Put it face down and out of reach. It'll still be there after this session.", voice: "phone down.", level: "high" },
+  gone:  { emoji: "🚶", short: "Left desk", title: "You left your desk", tip: "Taking a break? Tap Pause next time so it doesn't count against your focus.", voice: "come back to your desk.", level: "soft" }
+};
+function fire(type, z) {
+  const now = performance.now();
+  if (alertOpen) return false;
+  if (now - (S.lastAlertAt[type] || -1e9) < (type === "eyes" ? 20000 : 60000)) return false;
+  if (now - S.lastAnyAlert < 12000) return false;
+  S.lastAlertAt[type] = now; S.lastAnyAlert = now;
+  S.alerts.push({ type, t: S.totalSec });
+  logEvent(type, ALERTS[type].title);
+  const A = ALERTS[type];
+  $("#aEmoji").textContent = A.emoji; $("#aTitle").textContent = A.title; $("#aTip").textContent = A.tip;
+  $("#alertOv").classList.toggle("soft", A.level !== "high");
+  $("#aYes").textContent = type === "phone" ? "Yes, putting it away" : type === "gone" ? "OK, I'm back" : "Yes, I drifted";
+  $("#aNo").style.display = type === "gone" ? "none" : "";
+  $("#aNo").textContent = type === "away" ? "No, that's my notes" : type === "phone" ? "No phone there" : "No, I was focused";
+  show("#alertOv");
+  alertOpen = true; alertType = type; alertShownAt = now; alertLastRepeat = now; alertZ = z;
+  chime(A.level); say(A.voice);
+  return true;
+}
+function hideAlert(reset = true) {
+  hide("#alertOv"); alertOpen = false; alertType = null;
+  if (S && reset) { S.samples = []; S.closedMs = 0; S.awayMs = 0; S.driftMs = 0; S.p = 0; S.phoneHits = []; S.phoneNow = false; }
+}
+function feedback(correct) {
+  const type = alertType;
+  if (!type || !S) { hideAlert(); return; }
+  const tm = model.tm;
+  if (alertZ) { train(alertZ, correct ? 1 : 0, 0.08); model.labels++; }
+  if (correct) { model.confirms++; tm[type] = clamp(tm[type] * 0.95, 0.6, 2.5); if (type === "drift") model.pOff = clamp(model.pOff - 0.01, -0.15, 0.2); }
+  else {
+    model.falses++;
+    if (type === "away" && S.f && S.base.poses.length < 6) { S.base.poses.push({ f: [...S.f], thr: S.closedThr }); logEvent("info", "Learned a new OK pose (like your notes)"); }
+    else tm[type] = clamp(tm[type] * 1.2, 0.6, 2.5);
+    if (type === "eyes") { for (const p of S.base.poses) p.thr = clamp(p.thr + 0.05, 0.5, 0.95); }
+    if (type === "drift") model.pOff = clamp(model.pOff + 0.03, -0.15, 0.2);
+    if (type !== "away") logEvent("info", "Noted. AI adjusted to be less sensitive to that");
+  }
+  saveModel();
+  hideAlert();
+}
+$("#aYes").onclick = () => feedback(true);
+$("#aNo").onclick = () => feedback(false);
+
+// ============ UI ============
+function logEvent(type, text) {
+  if (!S) return;
+  const em = ALERTS[type] ? ALERTS[type].emoji : type === "self" ? "🙋" : type === "yawnlog" ? "🥱" : "•";
+  S.log.unshift({ t: S.totalSec, em, text }); S.log = S.log.slice(0, 7);
+  $("#log").innerHTML = S.log.map(l => `<li><time>${fmt(l.t)}</time><span>${l.em} ${esc(l.text)}</span></li>`).join("");
+}
+function chip(id, txt, cls) { const el = $(id); el.textContent = txt; el.className = cls; }
+function updateUI() {
+  $("#timer").textContent = fmt(S.totalSec); $("#hudTime").textContent = fmt(S.totalSec);
+  const sc = Math.round(S.score);
+  const col = sc >= 70 ? "#3ee6a8" : sc >= 45 ? "#ffbf47" : "#ff5d73";
+  const label = !S.present ? "Away from desk" : sc >= 70 ? "Locked in" : sc >= 45 ? "Drifting…" : "Zoned out";
+  $("#scoreNum").textContent = sc; $("#hudScore").textContent = sc;
+  $("#hudDot").style.background = col; $("#hudState").textContent = label;
+  const arc = $("#ringArc"); arc.setAttribute("stroke", col); arc.setAttribute("stroke-dashoffset", String(615.75 * (1 - sc / 100)));
+  const st = $("#stateTxt"); st.textContent = label; st.style.color = col;
+  chip("#cFace", S.present ? "In view" : "Not visible", S.present ? "ok" : "bad");
+  chip("#cEyes", !S.present ? "—" : S.closedMs > 800 ? "Closing" : "Open", !S.present ? "mute" : S.closedMs > 800 ? "bad" : "ok");
+  chip("#cHead", !S.present ? "—" : S.awayMs > 1500 ? "Looking away" : "On your work", !S.present ? "mute" : S.awayMs > 1500 ? "warn" : "ok");
+  if (!baselineReady()) chip("#cMind", "Learning…", "mute");
+  else chip("#cMind", S.p > T.pThr ? "Drifting" : S.p > T.pThr * 0.6 ? "Wavering" : "Engaged", S.p > T.pThr ? "bad" : S.p > T.pThr * 0.6 ? "warn" : "ok");
+  chip("#cHands", !S.handsN ? "Not in view" : S.handOnFace ? "On face" : S.handMot > 0.004 ? "Moving" : "Still", !S.handsN ? "mute" : S.handOnFace ? "warn" : "ok");
+  chip("#cPhone", !objDet ? "Off" : S.phoneNow ? "Detected!" : "None", S.phoneNow ? "bad" : "ok");
+  $("#pTxt").textContent = baselineReady() ? Math.round(S.p * 100) + "%" : "—";
+  const lp = Math.round(clamp(model.n / 90, 0, 1) * 100);
+  $("#learnWrap").style.display = baselineReady() ? "none" : "";
+  $("#learnPct").textContent = lp + "%"; $("#learnBar").style.width = lp + "%";
+  if (S.base) $("#dbg").textContent = S.present ? `head ${S.angle.toFixed(0)}°/${T.angle.toFixed(0)}° · eyes ${(S.blink * 100).toFixed(0)}/${(S.closedThr * 100).toFixed(0)} · blinks ${S.blinkTimes.filter(t => performance.now() - t < 30000).length * 2}/min · poses ${S.base.poses.length}` : "No face detected";
+  if (showPreview) drawSpark();
+}
+function drawSpark() {
+  const c = $("#spark"), g = c.getContext("2d"), W = c.width, H = c.height;
+  g.clearRect(0, 0, W, H);
+  const thrY = H - T.pThr * (H - 10) - 5;
+  g.strokeStyle = "rgba(255,93,115,.5)"; g.setLineDash([6, 6]); g.lineWidth = 2;
+  g.beginPath(); g.moveTo(0, thrY); g.lineTo(W, thrY); g.stroke(); g.setLineDash([]);
+  const d = S.pHist, n = 180;
+  g.strokeStyle = "#7aa2ff"; g.lineWidth = 3; g.beginPath(); let started = false;
+  d.forEach((v, i) => {
+    const x = W - (d.length - 1 - i) * (W / (n - 1));
+    if (v == null) { started = false; return; }
+    const y = H - v * (H - 10) - 5;
+    if (!started) { g.moveTo(x, y); started = true; } else g.lineTo(x, y);
+  });
+  g.stroke();
+}
+const HAND_CONN = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+function draw(fr, hr) {
+  const W = video.videoWidth, H = video.videoHeight;
+  if (cv.width !== W) cv.width = W;
+  if (cv.height !== H) cv.height = H;
+  ctx.drawImage(video, 0, 0, W, H);
+  ctx.fillStyle = "rgba(10,14,22,.35)"; ctx.fillRect(0, 0, W, H);
+  if (fr && fr.faceLandmarks && fr.faceLandmarks[0]) {
+    const lm = fr.faceLandmarks[0];
+    ctx.fillStyle = "rgba(122,162,255,.55)";
+    for (let i = 0; i < lm.length; i += 3) ctx.fillRect(lm[i].x * W - 1, lm[i].y * H - 1, 2, 2);
+    if (lm.length >= 478) {
+      ctx.fillStyle = S && S.closedMs > 800 ? "#ff5d73" : "#3ee6a8";
+      for (let i = 468; i < 478; i++) { ctx.beginPath(); ctx.arc(lm[i].x * W, lm[i].y * H, 2.5, 0, 6.283); ctx.fill(); }
+    }
+  }
+  if (hr && hr.landmarks) {
+    ctx.strokeStyle = S && S.handOnFace ? "#ffbf47" : "#3ee6a8"; ctx.lineWidth = 3;
+    for (const h of hr.landmarks) { ctx.beginPath(); for (const [a, b] of HAND_CONN) { ctx.moveTo(h[a].x * W, h[a].y * H); ctx.lineTo(h[b].x * W, h[b].y * H); } ctx.stroke(); }
+  }
+  if (S && S.phoneBox) { const b = S.phoneBox; ctx.strokeStyle = "#ff5d73"; ctx.lineWidth = 4; ctx.strokeRect(b.originX, b.originY, b.width, b.height); }
+}
+function drawSummary(mins) {
+  const c = $("#sumChart"), g = c.getContext("2d"), W = c.width, H = c.height;
+  g.clearRect(0, 0, W, H);
+  if (!mins.length) { g.fillStyle = "#8d9ab3"; g.font = "22px -apple-system"; g.fillText("Study longer than a minute to see your focus timeline", 20, H / 2); return; }
+  const bw = Math.min(40, (W - 20) / mins.length);
+  mins.forEach((v, i) => {
+    const h = Math.max(4, (v / 100) * (H - 20));
+    g.fillStyle = v >= 70 ? "#3ee6a8" : v >= 45 ? "#ffbf47" : "#ff5d73";
+    g.fillRect(10 + i * bw, H - 10 - h, Math.max(2, bw - 3), h);
+  });
+}
+
+renderSettings(); renderHistory(); renderModelCard(); renderRecent();
+</script>
+</body>
+</html>
