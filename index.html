@@ -170,6 +170,10 @@ input[type=text],input[type=number],input[type=time]{width:150px;background:#0c1
 .bvBtns .end{background:#3a1520;border-color:#5a2232;color:#ffb3bf}
 #dimmer{position:fixed;inset:0;z-index:44;background:#000;opacity:0;pointer-events:none;transition:opacity 1.5s}
 #dimmer.on{opacity:.82;pointer-events:auto}
+/* distraction-free: no live focus ring, score or percentage meters while studying */
+#hudDot,#hudScore,.ring,#stateTxt,#bvState,.aiblock .aihead,#spark{display:none!important}
+#hud .st:empty{display:none}
+#bvHint{font-size:18px;margin-bottom:6px}
 /* overlays */
 .ov{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(5,8,14,.86);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 #loadOv,#errOv,#exportOv,#alarmOv,#blkOv{z-index:60}
@@ -293,7 +297,7 @@ input[type=text],input[type=number],input[type=time]{width:150px;background:#0c1
       <div class="num"><b id="bvNum">100</b><span>focus score</span></div>
     </div>
     <div id="bvState">Locked in</div>
-    <div id="bvHint">Eyes on your book. I'll nudge you if you drift.</div>
+    <div id="bvHint">Eyes on your book. I'll warn you only if you get distracted.</div>
     <div class="bvBtns"><button id="bvThink">🤔 I'm thinking</button><button id="bvBreak">☕ I'm taking a timed break</button><button id="bvZone">🙋 I zoned out</button></div>
     <div class="bvBtns" style="margin-top:0"><button id="bvDetails">📊 Details</button><button id="bvPause">⏸ Pause</button><button class="end" id="bvEnd">End</button></div>
   </div>
@@ -1783,7 +1787,7 @@ function updateUI() {
   const label = !S.present ? "Away from desk" : sc >= 70 ? "Locked in" : sc >= 45 ? "Drifting…" : "Zoned out";
   $("#scoreNum").textContent = sc; $("#hudScore").textContent = sc;
   const thinkLeft = thinkingNow() ? Math.ceil((S.thinkUntil - performance.now()) / 1000) : 0;
-  $("#hudDot").style.background = col; $("#hudState").textContent = thinkLeft ? `🤔 Thinking ${fmt(thinkLeft)}` : label;
+  $("#hudDot").style.background = col; $("#hudState").textContent = thinkLeft ? `🤔 Thinking ${fmt(thinkLeft)}` : "";
   const arc = $("#ringArc"); arc.setAttribute("stroke", col); arc.setAttribute("stroke-dashoffset", String(615.75 * (1 - sc / 100)));
   const st = $("#stateTxt"); st.textContent = label; st.style.color = col;
   if (S.mode === "book") {
@@ -1793,7 +1797,7 @@ function updateUI() {
     $("#bvHint").textContent = thinkLeft ? `🤔 Thinking mode · ${fmt(thinkLeft)} left. Zone-out alerts are paused.`
       : !S.present ? "I can't see your face. Check the iPad's angle."
       : !baselineReady() ? `Learning your focus pattern… ${Math.round(clamp(model.n / 90, 0, 1) * 100)}%`
-      : "Eyes on your book. I'll nudge you if you drift. Tap anywhere to wake the screen.";
+      : "Eyes on your book. I'll warn you only if you get distracted.";
   }
   chip("#cFace", S.present ? "In view" : "Not visible", S.present ? "ok" : "bad");
   chip("#cEyes", !S.present ? "—" : S.closedMs > 800 ? "Closing" : "Open", !S.present ? "mute" : S.closedMs > 800 ? "bad" : "ok");
