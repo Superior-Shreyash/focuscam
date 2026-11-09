@@ -41,7 +41,29 @@ h2{font-size:15px;margin:0 0 12px;color:var(--mute);font-weight:600;text-transfo
 .seg button.on{background:var(--card2);color:var(--text)}
 .fl{display:block;font-size:14px;color:var(--mute);margin:14px 0 0}
 .fl input{display:block;width:100%!important;margin-top:6px}
-input[type=text],input[type=number]{width:150px;background:#0c1220;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:8px 10px;font-size:15px}
+/* timetable */
+.nowline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:16px}
+.nowline .mute{font-size:14px}
+.tdot{width:10px;height:10px;border-radius:50%;flex:none;display:inline-block}
+.nowbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.tl{list-style:none;margin:12px 0 0;padding:0}
+.tl li{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #1c2538;font-size:14.5px}
+.tl li:last-child{border-bottom:0}
+.tl .tt{font-variant-numeric:tabular-nums;color:var(--mute);min-width:96px}
+.tl .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl li.done{opacity:.55}
+.tl li.now{background:linear-gradient(90deg,rgba(62,230,168,.08),transparent);border-radius:10px;padding-left:8px}
+.daychips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.daychips button{padding:8px 11px;border-radius:10px;background:#0c1220;border:1px solid var(--line);font-weight:600;font-size:14px;color:var(--mute)}
+.daychips button.on{background:var(--ok);color:#04121a;border-color:transparent}
+.box.sheet{max-width:620px;text-align:left;max-height:calc(100vh - 48px);overflow:auto}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.err{color:var(--bad);font-size:14px;min-height:18px;margin-top:8px}
+.brgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 12px}
+.brgrid button{padding:14px 0;font-size:16px}
+#brCount{font-size:76px}
+#hud button.on,.bvBtns button.on{background:var(--accent);color:#04121a;border-color:transparent}
+input[type=text],input[type=number],input[type=time]{width:150px;background:#0c1220;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:8px 10px;font-size:15px}
 .starts{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-top:18px}
 @media (max-width:600px){.starts{grid-template-columns:1fr}}
 .big{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:18px;border-radius:16px;font-size:19px;font-weight:700;background:linear-gradient(135deg,#3ee6a8,#5fc7ff);color:#04121a;cursor:pointer}
@@ -150,7 +172,7 @@ input[type=text],input[type=number]{width:150px;background:#0c1220;border:1px so
 #dimmer.on{opacity:.82;pointer-events:auto}
 /* overlays */
 .ov{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(5,8,14,.86);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
-#loadOv,#errOv,#exportOv{z-index:60}
+#loadOv,#errOv,#exportOv,#alarmOv,#blkOv{z-index:60}
 .box{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:26px;max-width:520px;width:100%;text-align:center}
 .box h3{margin:6px 0 8px;font-size:24px}
 .box p{color:#c3cde0;line-height:1.5;margin:0 0 16px}
@@ -177,6 +199,12 @@ input[type=text],input[type=number]{width:150px;background:#0c1220;border:1px so
 <div id="home" class="wrap">
   <div class="brand"><div class="logo">🎯</div><h1>FocusCam</h1></div>
   <p class="tag">A PDF reader with an AI study buddy built in. It learns how <i>you</i> look when you're focused and nudges you the moment you drift.</p>
+
+  <div class="card" id="todayCard" style="margin-bottom:16px">
+    <div class="aihead"><h2 style="margin:0" id="todayHead">Today</h2><button class="btn sm" id="ttEdit">🗓️ Edit timetable</button></div>
+    <div id="todayNow" style="margin-top:12px"></div>
+    <ul class="tl" id="todayList"></ul>
+  </div>
 
   <div class="starts">
     <label class="big" id="openLbl">📄 Open a PDF &amp; start studying<input type="file" id="pdfIn" accept="application/pdf,.pdf" hidden></label>
@@ -233,7 +261,7 @@ input[type=text],input[type=number]{width:150px;background:#0c1220;border:1px so
   <div id="reader" class="hidden"><div id="pages"></div></div>
   <div id="hud" class="hidden">
     <span class="dot" id="hudDot"></span><b id="hudScore">100</b><span class="st" id="hudState">Locked in</span><span class="tm" id="hudTime">0:00</span>
-    <button id="hudZone" title="I zoned out">🙋</button><button id="hudPanel" title="Focus details">📊</button><button id="hudPause" title="Pause">⏸</button><button class="end" id="hudEnd">End</button>
+    <button id="hudZone" title="I zoned out">🙋</button><button id="hudThink" title="I'm thinking">🤔</button><button id="hudBreak" title="I'm taking a timed break">☕</button><button id="hudPanel" title="Focus details">📊</button><button id="hudPause" title="Pause">⏸</button><button class="end" id="hudEnd">End</button>
   </div>
   <div id="pbar" class="hidden">
     <button id="inkBtn" title="Pencil tools">✏️</button><button id="zOut">−</button><span id="pageInd">1 / 1</span><button id="zIn">+</button><button id="darkBtn" title="Night mode">🌙</button>
@@ -266,7 +294,8 @@ input[type=text],input[type=number]{width:150px;background:#0c1220;border:1px so
     </div>
     <div id="bvState">Locked in</div>
     <div id="bvHint">Eyes on your book. I'll nudge you if you drift.</div>
-    <div class="bvBtns"><button id="bvZone">🙋 I zoned out</button><button id="bvDetails">📊 Details</button><button id="bvPause">⏸ Pause</button><button class="end" id="bvEnd">End</button></div>
+    <div class="bvBtns"><button id="bvThink">🤔 I'm thinking</button><button id="bvBreak">☕ I'm taking a timed break</button><button id="bvZone">🙋 I zoned out</button></div>
+    <div class="bvBtns" style="margin-top:0"><button id="bvDetails">📊 Details</button><button id="bvPause">⏸ Pause</button><button class="end" id="bvEnd">End</button></div>
   </div>
   <div id="dimmer"></div>
 
@@ -298,6 +327,8 @@ input[type=text],input[type=number]{width:150px;background:#0c1220;border:1px so
           <div class="chip"><span>Phone</span><b id="cPhone">—</b></div>
         </div>
         <button class="zone" id="zoneBtn">🙋 I just zoned out (teach the AI)</button>
+        <button class="zone" id="thinkBtn">🤔 I'm thinking (pause zone-out alerts)</button>
+        <button class="zone" id="breakBtn">☕ I'm taking a timed break</button>
       </div>
       <div class="card">
         <div class="preview" id="previewBox"><canvas id="overlay"></canvas></div>
@@ -332,6 +363,40 @@ input[type=text],input[type=number]{width:150px;background:#0c1220;border:1px so
   <input type="number" id="endPage" inputmode="numeric" min="1" style="width:100%;font-size:22px;text-align:center">
   <div class="fb" style="margin-top:14px"><button class="n" id="epSkip">Skip</button><button class="y" id="epSave">Save</button></div>
 </div></div>
+<div class="ov hidden" id="ttOv"><div class="box sheet">
+  <div class="aihead"><h3 style="margin:0">Weekly timetable</h3><button class="btn sm pri" id="ttClose">Done</button></div>
+  <div class="daychips" id="ttDays" style="margin-top:14px"></div>
+  <ul class="tl" id="ttList"></ul>
+  <div class="nowbtns"><button class="btn pri" id="ttAdd">+ Add block</button><button class="btn" id="ttIcs">📅 Add to iPad Calendar</button></div>
+  <p class="note" id="ttMsg">“Add to iPad Calendar” puts every block in your Calendar with a reminder, so you get alerts even when FocusCam is closed.</p>
+</div></div>
+<div class="ov hidden" id="blkOv"><div class="box" style="text-align:left">
+  <h3 id="blkTitle" style="text-align:center">Add block</h3>
+  <label class="fl">What are you doing?<input type="text" id="bTitle" list="bTitles" maxlength="40" placeholder="e.g. Physics: rotational mechanics"></label>
+  <datalist id="bTitles"></datalist>
+  <div class="fl">Type<div class="daychips" id="bType"></div></div>
+  <div class="two"><label class="fl">Starts<input type="time" id="bStart"></label><label class="fl">Ends<input type="time" id="bEnd"></label></div>
+  <div class="fl">Repeats on<div class="daychips" id="bDays"></div></div>
+  <div class="err" id="bErr"></div>
+  <div class="fb" style="margin-top:8px"><button class="n" id="bDel">Delete</button><button class="n" id="bCancel">Cancel</button><button class="y" id="bSave">Save</button></div>
+</div></div>
+<div class="ov hidden" id="breakPickOv"><div class="box"><div class="emoji">☕</div><h3>Take a timed break</h3>
+  <p>Tracking pauses, and an alarm rings when it's time to come back.</p>
+  <div class="brgrid" id="brChoices"></div>
+  <div class="two"><input type="number" id="brCustom" min="1" max="240" inputmode="numeric" placeholder="Custom (min)" style="width:100%"><button class="btn pri" id="brStartCustom">Start custom</button></div>
+  <button class="btn" id="brCancel" style="margin-top:12px">Cancel</button>
+</div></div>
+<div class="ov hidden" id="breakOv"><div class="box"><div class="emoji">☕</div><h3>On a break</h3>
+  <div class="count" id="brCount">10:00</div><p id="brUntil"></p>
+  <div class="fb"><button class="n" id="brPlus">+5 min</button><button class="y" id="brEnd">End break now</button></div>
+  <div class="fbnote">Keep FocusCam open (it's fine if the screen dims) so the alarm can ring.</div>
+</div></div>
+<div class="ov hidden" id="alarmOv"><div class="box"><div class="emoji">⏰</div><h3>Break's over!</h3><p id="alarmMsg">Time to get back to work.</p>
+  <button class="btn pri" id="alarmOk" style="padding:16px 30px;font-size:18px">I'm back, let's go</button>
+</div></div>
+<div class="ov hidden" id="promptOv"><div class="box"><div class="emoji" id="prEmoji">🗓️</div><h3 id="prTitle"></h3><p id="prMsg"></p>
+  <div class="fb"><button class="n" id="prNo">Not now</button><button class="y" id="prYes">OK</button></div>
+</div></div>
 <div class="ov hidden" id="exportOv"><div class="box"><div class="emoji">📤</div><h3>Your PDF with notes is ready</h3><p id="exName"></p>
   <div class="fb"><button class="n" id="exClose">Close</button><button class="y" id="exShare">Save to Files</button></div>
   <div class="fbnote" id="exNote">In the share sheet, tap “Save to Files” and pick a folder.</div>
@@ -340,7 +405,7 @@ input[type=text],input[type=number]{width:150px;background:#0c1220;border:1px so
 <div class="ov hidden" id="errOv"><div class="box"><div class="emoji">⚠️</div><h3 id="errTitle">Something went wrong</h3><p id="errMsg"></p><button class="btn" id="errClose">OK</button></div></div>
 <div class="ov hidden" id="alertOv"><div class="box">
   <div class="emoji" id="aEmoji">😴</div><h3 id="aTitle">Eyes closing!</h3><p id="aTip"></p>
-  <div class="fb"><button class="y" id="aYes">Yes, I drifted</button><button class="n" id="aNo">No, I was focused</button></div>
+  <div class="fb"><button class="y" id="aYes">Yes, I drifted</button><button class="n" id="aThink">🤔 I was thinking</button><button class="n" id="aNo">No, I was focused</button></div>
   <div class="fbnote">Your answer trains your personal AI model.</div>
 </div></div>
 <div class="ov hidden" id="sumOv"><div class="box">
@@ -461,7 +526,8 @@ function newState(mode) {
     samples: [], lastSample: 0, featHist: [], p: 0, pHist: [], driftMs: 0, lastNeg: 0,
     score: 100, minutes: [], minAcc: { s: 0, n: 0 }, alerts: [], lastAlertAt: {}, lastAnyAlert: -1e9, goneAlerted: false,
     base: null, calib: null, log: [], selfCaught: 0, pagesSeen: new Set(),
-    hx: [], lastFlip: 0, flips: 0, startPage: null
+    hx: [], lastFlip: 0, flips: 0, startPage: null,
+    thinkUntil: 0, thinkEnded: true, thinkSec: 0, lastThinkTrain: 0, breakSec: 0, blockId: null, subject: null, startedAt: Date.now()
   };
 }
 
@@ -544,6 +610,7 @@ async function renderRecent() {
 }
 function openBookForm(name, page) {
   unlockAudio();
+  if (!name) { const cb = currentBlock(); if (cb && cb.type === "study") { name = cb.title; const bk = load(K_BOOKS, []).find(x => x.name === name); if (bk && !page) page = bk.page; } }
   $("#bkName").value = name || ""; $("#bkPage").value = page || "";
   $("#bkList").innerHTML = load(K_BOOKS, []).map(b => `<option value="${esc(b.name)}">`).join("");
   show("#bookOv");
@@ -596,8 +663,8 @@ function unlockAudio() {
   } catch (e) {}
   try { if ("speechSynthesis" in window) { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); } } catch (e) {}
 }
-function chime(level) {
-  if (!settings.sound || !actx) return;
+function chime(level, force = false) {
+  if ((!settings.sound && !force) || !actx) return;
   try {
     if (actx.state === "suspended") actx.resume();
     const notes = level === "high" ? [988, 740, 988, 740, 988] : [660, 880, 1046];
@@ -610,8 +677,8 @@ function chime(level) {
     }
   } catch (e) {}
 }
-function say(text) {
-  if (!settings.voice || !("speechSynthesis" in window)) return;
+function say(text, force = false) {
+  if ((!settings.voice && !force) || !("speechSynthesis" in window)) return;
   try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance((settings.name ? settings.name + ", " : "") + text); u.rate = 1.02; speechSynthesis.speak(u); } catch (e) {}
 }
 async function keepAwake() { try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {} }
@@ -1054,6 +1121,247 @@ $("#sumExport").onclick = exportPdf;
 let toastT = 0;
 function toast(msg, ms = 3500) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), ms); }
 
+// ============ TIMETABLE ============
+// Weekly blocks: { id, day (0=Sun…6=Sat), start "HH:MM", end "HH:MM" (end ≤ start means it runs past midnight), title, type }
+const K_TT = "focuscam.timetable.v1";
+const TYPES = {
+  study: { label: "Study", emoji: "📚", color: "#3ee6a8" },
+  class: { label: "Class", emoji: "🏫", color: "#7aa2ff" },
+  break: { label: "Break", emoji: "☕", color: "#ffbf47" },
+  sleep: { label: "Sleep", emoji: "😴", color: "#8a7dff" },
+  other: { label: "Other", emoji: "🗓️", color: "#c49bff" }
+};
+const typeOf = b => TYPES[b.type] || TYPES.other;
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0], DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+let TT = load(K_TT, { blocks: [] });
+const saveTT = () => save(K_TT, TT);
+const toMin = s => { const [h, m] = s.split(":").map(Number); return h * 60 + m; };
+const fromMin = m => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+const dayBlocks = d => TT.blocks.filter(b => b.day === d).sort((a, b) => toMin(a.start) - toMin(b.start));
+const midnight = (d, offDays = 0) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() + offDays); return x; };
+function spanOn(b, base) {
+  const s = toMin(b.start), e0 = toMin(b.end), e = e0 <= s ? e0 + 1440 : e0;
+  return { ...b, s: base.getTime() + s * 60000, e: base.getTime() + e * 60000 };
+}
+function currentBlock(now = new Date()) {
+  const t = now.getTime();
+  for (const off of [0, -1]) {                      // yesterday's block may run past midnight
+    const base = midnight(now, off);
+    for (const b of dayBlocks(base.getDay())) { const x = spanOn(b, base); if (t >= x.s && t < x.e) return x; }
+  }
+  return null;
+}
+function nextBlock(now = new Date()) {
+  const base = midnight(now);
+  return dayBlocks(base.getDay()).map(b => spanOn(b, base)).find(x => x.s > now.getTime()) || null;
+}
+const hhmm = ms => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+function studiedMin(x) {                            // minutes of FocusCam sessions that overlap a block
+  let ms = 0;
+  for (const h of load(K_HIST, [])) {
+    if (!h.start) continue;
+    const wall = Math.max(1, h.d - h.start), tracked = Math.min(1, (h.dur * 1000) / wall);   // leave out breaks & pauses
+    ms += Math.max(0, Math.min(h.d, x.e) - Math.max(h.start, x.s)) * tracked;
+  }
+  return Math.round(ms / 60000);
+}
+function renderToday() {
+  const now = new Date(), cb = currentBlock(now), nb = nextBlock(now);
+  $("#todayHead").textContent = "Today · " + now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });
+  let h = "";
+  if (cb) {
+    const t = typeOf(cb), left = Math.max(1, Math.ceil((cb.e - now) / 60000)), pct = clamp((now - cb.s) / (cb.e - cb.s) * 100, 0, 100);
+    h = `<div class="nowline"><span class="tdot" style="background:${t.color}"></span><b>${t.emoji} Now: ${esc(cb.title)}</b><span class="mute">${cb.start}–${cb.end} · ${left} min left</span></div>
+         <div class="bar"><i style="width:${pct}%;background:${t.color}"></i></div>`;
+    if (cb.type === "study") h += `<div class="nowbtns"><label class="btn pri sm" for="pdfIn" data-unlock="1">📄 Study with a PDF</label><button class="btn sm" data-tbook="${esc(cb.title)}">📖 Study from a book</button></div>`;
+    else if (cb.type === "break") h += `<div class="nowbtns"><button class="btn pri sm" data-tbreak="${left}">☕ Start ${left}-min break timer</button></div>`;
+  } else if (nb) {
+    h = `<div class="nowline"><b>🌿 Free time</b><span class="mute">Next: ${typeOf(nb).emoji} ${esc(nb.title)} at ${nb.start}</span></div>`;
+  } else if (!TT.blocks.length) {
+    h = `<div class="mute" style="font-size:14.5px">No timetable yet. Plan your week so FocusCam knows what you should be doing, nudges you when blocks change and tracks how much you actually studied.</div>`;
+  } else h = `<div class="nowline"><b>✅ Nothing else planned today</b></div>`;
+  $("#todayNow").innerHTML = h;
+  const base = midnight(now);
+  const list = dayBlocks(base.getDay()).map(b => spanOn(b, base));
+  $("#todayList").innerHTML = list.map(x => {
+    const t = typeOf(x), state = now >= x.e ? "done" : now >= x.s ? "now" : "";
+    let pill = state === "now" ? "Now" : "";
+    if (x.type === "study" && now >= x.s) { const m = studiedMin(x); pill = `${m}/${Math.round((x.e - x.s) / 60000)} min studied`; }
+    return `<li class="${state}"><span class="tt">${x.start}–${x.end}</span><span class="tdot" style="background:${t.color}"></span><span class="nm">${t.emoji} ${esc(x.title)}</span>${pill ? `<span class="pill">${pill}</span>` : ""}</li>`;
+  }).join("");
+}
+$("#todayNow").addEventListener("click", e => {
+  const b = e.target.closest("[data-tbook],[data-tbreak],[data-unlock]"); if (!b) return;
+  unlockAudio();
+  if (b.dataset.tbook) { const bk = load(K_BOOKS, []).find(x => x.name === b.dataset.tbook); openBookForm(b.dataset.tbook, bk ? bk.page : ""); }
+  if (b.dataset.tbreak) startBreak(+b.dataset.tbreak);
+});
+setInterval(() => { if (!$("#home").classList.contains("hidden")) renderToday(); }, 30000);
+
+// ---- timetable editor ----
+let ttDay = new Date().getDay(), editing = null, bType = "study", bDays = new Set();
+function renderTT() {
+  $("#ttDays").innerHTML = DAY_ORDER.map(d => `<button data-d="${d}" class="${d === ttDay ? "on" : ""}">${DAY_NAMES[d]}</button>`).join("");
+  const bl = dayBlocks(ttDay);
+  $("#ttList").innerHTML = bl.length ? bl.map(b => `<li><span class="tt">${b.start}–${b.end}</span><span class="tdot" style="background:${typeOf(b).color}"></span><span class="nm">${typeOf(b).emoji} ${esc(b.title)}</span><button class="btn sm" data-edit="${b.id}">Edit</button></li>`).join("")
+    : `<li class="mute">Nothing planned for ${DAY_NAMES[ttDay]} yet. Tap “+ Add block”.</li>`;
+}
+$("#ttEdit").onclick = () => { ttDay = new Date().getDay(); renderTT(); show("#ttOv"); };
+$("#ttClose").onclick = () => { hide("#ttOv"); renderToday(); };
+$("#ttDays").onclick = e => { const d = e.target.dataset.d; if (d != null) { ttDay = +d; renderTT(); } };
+$("#ttList").onclick = e => { const id = e.target.dataset.edit; if (id) openBlockForm(TT.blocks.find(b => b.id === id)); };
+$("#ttAdd").onclick = () => openBlockForm(null);
+function openBlockForm(b) {
+  editing = b || null;
+  $("#blkTitle").textContent = b ? "Edit block" : "Add block";
+  const last = dayBlocks(ttDay).slice(-1)[0];
+  const st = b ? b.start : last ? last.end : fromMin(Math.min(22 * 60, (new Date().getHours() + 1) * 60));
+  $("#bTitle").value = b ? b.title : "";
+  $("#bStart").value = st; $("#bEnd").value = b ? b.end : fromMin((toMin(st) + 60) % 1440);
+  bType = b ? b.type : "study"; bDays = new Set([b ? b.day : ttDay]);
+  $("#bTitles").innerHTML = [...new Set(TT.blocks.map(x => x.title))].map(t => `<option value="${esc(t)}">`).join("");
+  $("#bDel").style.display = b ? "" : "none"; $("#bErr").textContent = "";
+  renderBlockForm(); show("#blkOv");
+}
+function renderBlockForm() {
+  $("#bType").innerHTML = Object.entries(TYPES).map(([k, v]) => `<button data-t="${k}" class="${k === bType ? "on" : ""}">${v.emoji} ${v.label}</button>`).join("");
+  $("#bDays").innerHTML = DAY_ORDER.map(d => `<button data-d="${d}" class="${bDays.has(d) ? "on" : ""}">${DAY_NAMES[d]}</button>`).join("") +
+    `<button data-d="all">Every day</button>`;
+}
+$("#bType").onclick = e => { const t = e.target.closest("button"); if (t && t.dataset.t) { bType = t.dataset.t; renderBlockForm(); } };
+$("#bDays").onclick = e => {
+  const d = e.target.dataset.d; if (d == null) return;
+  if (d === "all") bDays = new Set(DAY_ORDER); else { const n = +d; bDays.has(n) ? bDays.delete(n) : bDays.add(n); }
+  renderBlockForm();
+};
+$("#bCancel").onclick = () => hide("#blkOv");
+$("#bDel").onclick = () => { if (editing) TT.blocks = TT.blocks.filter(x => x.id !== editing.id); saveTT(); hide("#blkOv"); renderTT(); renderToday(); };
+$("#bSave").onclick = () => {
+  const s = $("#bStart").value, e = $("#bEnd").value;
+  if (!s || !e) { $("#bErr").textContent = "Pick a start and end time."; return; }
+  if (s === e) { $("#bErr").textContent = "Start and end can't be the same."; return; }
+  if (!bDays.size) { $("#bErr").textContent = "Pick at least one day."; return; }
+  const title = $("#bTitle").value.trim() || TYPES[bType].label;
+  if (editing) TT.blocks = TT.blocks.filter(x => x.id !== editing.id);
+  for (const d of bDays) TT.blocks.push({ id: Math.random().toString(36).slice(2, 10), day: d, start: s, end: e, title, type: bType });
+  saveTT(); hide("#blkOv"); renderTT(); renderToday();
+};
+// ---- export to iPad Calendar (.ics): weekly repeating events with an alert at the start of each block ----
+$("#ttIcs").onclick = () => {
+  if (!TT.blocks.length) { $("#ttMsg").textContent = "Add some blocks first."; return; }
+  const pad = n => String(n).padStart(2, "0");
+  const loc = d => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+  const icsEsc = s => String(s).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+  const BYDAY = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"], now = new Date();
+  const stamp = now.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+  const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//FocusCam//Timetable//EN", "CALSCALE:GREGORIAN", "X-WR-CALNAME:FocusCam timetable"];
+  for (const b of TT.blocks) {
+    const base = midnight(now, (b.day - now.getDay() + 7) % 7), x = spanOn(b, base), t = typeOf(b);
+    L.push("BEGIN:VEVENT", `UID:${b.id}@focuscam`, `DTSTAMP:${stamp}`, `DTSTART:${loc(new Date(x.s))}`, `DTEND:${loc(new Date(x.e))}`,
+      `RRULE:FREQ=WEEKLY;BYDAY=${BYDAY[b.day]}`, `SUMMARY:${icsEsc(t.emoji + " " + b.title)}`,
+      "BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${icsEsc(b.title)}`, "TRIGGER:PT0S", "END:VALARM", "END:VEVENT");
+  }
+  L.push("END:VCALENDAR");
+  const url = URL.createObjectURL(new Blob([L.join("\r\n")], { type: "text/calendar" }));
+  const a = document.createElement("a"); a.href = url; a.download = "FocusCam timetable.ics"; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  $("#ttMsg").textContent = "Downloaded. Open “FocusCam timetable.ics” from Safari's downloads (↓) or the Files app and tap “Add All”. Re-do this whenever you change the timetable.";
+};
+
+// ============ TIMED BREAKS ============
+const BR = { start: 0, end: 0, timer: 0, alarmT: 0, wasRunning: false, warned: false };
+function openBreakPicker() {
+  $("#brChoices").innerHTML = [5, 10, 15, 20, 30, 45].map(m => `<button class="btn" data-min="${m}">${m} min</button>`).join("");
+  $("#brCustom").value = ""; show("#breakPickOv");
+}
+$("#brChoices").onclick = e => { const m = +e.target.dataset.min; if (m) { hide("#breakPickOv"); startBreak(m); } };
+$("#brStartCustom").onclick = () => { const m = parseInt($("#brCustom").value, 10); if (m > 0 && m <= 240) { hide("#breakPickOv"); startBreak(m); } };
+$("#brCancel").onclick = () => hide("#breakPickOv");
+function startBreak(min) {
+  unlockAudio();
+  hideAlert(false); setDim(false); $("#session").classList.remove("panel");
+  BR.wasRunning = running && !!S;
+  if (running) { running = false; cancelAnimationFrame(rafId); }
+  BR.start = Date.now(); BR.end = BR.start + min * 60000; BR.warned = false;
+  if (S) logEvent("break", `Timed break started (${min} min)`);
+  show("#breakOv"); tickBreak();
+  clearInterval(BR.timer); BR.timer = setInterval(tickBreak, 250);
+  keepAwake();
+}
+function tickBreak() {
+  const left = BR.end - Date.now();
+  $("#brCount").textContent = fmt(Math.max(0, Math.ceil(left / 1000)));
+  $("#brUntil").textContent = "Back at " + hhmm(BR.end);
+  if (!BR.warned && left <= 60000 && left > 0 && BR.end - BR.start > 120000) { BR.warned = true; chime("soft", true); say("One minute of break left.", true); }
+  if (left <= 0) { clearInterval(BR.timer); hide("#breakOv"); ringAlarm(); }
+}
+$("#brPlus").onclick = () => { BR.end += 5 * 60000; BR.warned = false; tickBreak(); };
+$("#brEnd").onclick = () => { clearInterval(BR.timer); hide("#breakOv"); finishBreak(); };
+function ringAlarm() {
+  const what = S && S.subject ? S.subject : S && S.pdfName ? S.pdfName.replace(/\.pdf$/i, "") : "work";
+  $("#alarmMsg").textContent = `Time to get back to ${what}.`;
+  show("#alarmOv");
+  let n = 0;
+  const ring = () => { chime("high", true); if (n % 5 === 0) say("Break's over. Time to get back to " + what + ".", true); if (++n > 90) stopAlarm(); };
+  ring(); clearInterval(BR.alarmT); BR.alarmT = setInterval(ring, 2000);
+}
+function stopAlarm() { clearInterval(BR.alarmT); try { speechSynthesis.cancel(); } catch (e) {} }
+$("#alarmOk").onclick = () => { stopAlarm(); hide("#alarmOv"); finishBreak(); };
+function finishBreak() {
+  const secs = Math.round((Date.now() - BR.start) / 1000);
+  if (S) { S.breakSec += secs; logEvent("break", `Back from a ${Math.max(1, Math.round(secs / 60))}-min break`); }
+  if (S && BR.wasRunning) {
+    S.prevT = null; S.noFaceMs = 0; S.closedMs = 0; S.awayMs = 0; S.driftMs = 0; S.samples = []; S.lastTick = performance.now();
+    running = true; loop();
+  }
+  if (!S) renderToday();
+}
+
+// ============ "I'M THINKING" MODE ============
+// Deep thinking often looks like a blank stare. This pauses zone-out & look-away alerts for a few minutes,
+// counts the time as focused, and quietly teaches your AI model that this look isn't drifting.
+const THINK_MS = 3 * 60000;
+const thinkingNow = () => !!(S && performance.now() < S.thinkUntil);
+function toggleThinking(force) {
+  if (!S || !S.base) return;
+  if (thinkingNow() && force !== true) { S.thinkUntil = 0; logEvent("think", "Done thinking"); }
+  else {
+    S.thinkUntil = performance.now() + THINK_MS; S.thinkEnded = false; S.driftMs = 0; S.awayMs = 0;
+    logEvent("think", "Thinking mode: alerts paused for 3 min");
+    toast("🤔 Thinking mode for 3 minutes. Zone-out and look-away alerts are paused. Tap 🤔 again when you're done.", 4500);
+  }
+  updateThinkButtons();
+}
+function updateThinkButtons() {
+  const on = thinkingNow();
+  $("#hudThink").classList.toggle("on", on); $("#bvThink").classList.toggle("on", on);
+  $("#bvThink").textContent = on ? "🤔 Done thinking" : "🤔 I'm thinking";
+  $("#thinkBtn").textContent = on ? "🤔 Done thinking" : "🤔 I'm thinking (pause zone-out alerts)";
+}
+$("#hudThink").onclick = () => toggleThinking(); $("#bvThink").onclick = () => toggleThinking(); $("#thinkBtn").onclick = () => toggleThinking();
+$("#hudBreak").onclick = openBreakPicker; $("#bvBreak").onclick = openBreakPicker; $("#breakBtn").onclick = openBreakPicker;
+$("#prNo").onclick = () => hide("#promptOv");
+function promptUser(emoji, title, msg, yesLabel, onYes, noLabel = "Not now") {
+  $("#prEmoji").textContent = emoji; $("#prTitle").textContent = title; $("#prMsg").textContent = msg;
+  $("#prYes").textContent = yesLabel; $("#prNo").textContent = noLabel;
+  $("#prYes").onclick = () => { hide("#promptOv"); onYes(); };
+  show("#promptOv");
+}
+// When the timetable moves on to a new block during a session
+function onBlockChange(cb) {
+  if (!cb) { toast("🗓️ That timetable block has finished. You're in free time now."); chime("soft"); return; }
+  const t = typeOf(cb), left = Math.max(1, Math.round((cb.e - Date.now()) / 60000));
+  logEvent("info", `Timetable: ${cb.title} (until ${cb.end})`);
+  if (cb.type === "break") {
+    chime("soft"); say("Break time on your timetable.");
+    promptUser("☕", "Break time", `Your timetable has a break now: ${cb.title}, ${left} min.`, `Start ${left}-min break`, () => startBreak(left), "Keep studying");
+  } else {
+    if (cb.type === "study") S.subject = cb.title;
+    chime("soft"); say(`Time for ${cb.title}.`);
+    toast(`${t.emoji} Now: ${cb.title} until ${cb.end}`, 6000);
+  }
+}
+
 // ============ session control ============
 async function startSession(opts) {
   if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -1083,6 +1391,8 @@ async function startSession(opts) {
   S = newState(opts.mode);
   S.pdfName = opts.name || "";
   S.startPage = opts.startPage || null;
+  { const cb = currentBlock(); S.blockId = cb ? cb.id : null; S.subject = cb && cb.type === "study" ? cb.title : null; }
+  updateThinkButtons();
   const sess = $("#session");
   sess.classList.add("reading"); sess.classList.toggle("book", opts.mode === "book"); sess.classList.remove("panel");
   ["#reader", "#hud", "#pbar"].forEach(id => opts.mode === "pdf" ? show(id) : hide(id));
@@ -1173,7 +1483,7 @@ function showSummary(endPage) {
     else pagesTxt = `📖 ${S.pdfName}`;
     rememberBook(S.pdfName, endPage || S.startPage);
   }
-  if (S.totalSec >= 30) { const h = load(K_HIST, []); h.unshift({ d: Date.now(), dur: S.totalSec, focus, alerts: S.alerts.length, name: S.pdfName, pages: pagesRead }); save(K_HIST, h.slice(0, 50)); }
+  if (S.totalSec >= 30) { const h = load(K_HIST, []); h.unshift({ d: Date.now(), start: S.startedAt, dur: S.totalSec, focus, alerts: S.alerts.length, name: S.subject || S.pdfName, pages: pagesRead, breakMin: Math.round(S.breakSec / 60), thinkMin: Math.round(S.thinkSec / 60) }); save(K_HIST, h.slice(0, 50)); }
   $("#sDur").textContent = S.totalSec >= 3600 ? (S.totalSec / 3600).toFixed(1) + "h" : Math.round(S.totalSec / 60) + "m";
   $("#sFocus").textContent = focus + "%";
   $("#sAlerts").textContent = S.alerts.length;
@@ -1182,6 +1492,8 @@ function showSummary(endPage) {
   const by = {}; S.alerts.forEach(a => by[a.type] = (by[a.type] || 0) + 1);
   const parts = Object.entries(by).map(([k, v]) => `${ALERTS[k].emoji} ${ALERTS[k].short} ×${v}`);
   if (S.selfCaught) parts.push(`🙋 self-caught ×${S.selfCaught}`);
+  if (S.thinkSec >= 30) parts.push(`🤔 thinking ${Math.round(S.thinkSec / 60)} min`);
+  if (S.breakSec >= 30) parts.push(`☕ breaks ${Math.round(S.breakSec / 60)} min`);
   $("#sBreak").textContent = parts.length ? parts.join("   ") : "No drifts detected. Great session!";
   drawSummary(S.minutes);
   show("#sumOv");
@@ -1193,7 +1505,7 @@ $("#sumDone").onclick = () => {
   if (R.pdf) { try { R.pdf.destroy(); } catch (e) {} R.pdf = null; }
   R.blob = null; exportFile = null;
   pagesEl.innerHTML = "";
-  renderHistory(); renderModelCard(); renderRecent(); S = null;
+  renderHistory(); renderModelCard(); renderRecent(); S = null; renderToday();
 };
 
 // ============ main loop ============
@@ -1360,15 +1672,24 @@ function tick(now) {
 
   const writingNow = now - (INK.lastInkT || 0) < 5000;     // actively writing on the PDF = engaged
   if (writingNow) { S.driftMs = 0; S.closedMs = 0; S.awayMs = 0; }
+  const thinking = now < S.thinkUntil;
+  if (thinking) {
+    S.thinkSec++; S.driftMs = 0; S.awayMs = 0;
+    if (z && now - S.lastThinkTrain > 15000) { S.lastThinkTrain = now; train(z, 0, 0.01); }   // "this look = thinking, not drifting"
+  } else if (S.thinkUntil && !S.thinkEnded) {
+    S.thinkEnded = true; updateThinkButtons(); chime("soft");
+    toast("🤔 Thinking time's up. Alerts are back on. Tap 🤔 again if you need longer.", 5000);
+  }
+  { const cb = currentBlock(), id = cb ? cb.id : null; if (id !== S.blockId) { S.blockId = id; onBlockChange(cb); } }
   if (!alertOpen) {
     if (settings.gone && S.noFaceMs > T.goneSec * 1000 && !S.goneAlerted) { if (fire("gone", z)) S.goneAlerted = true; }
-    if (settings.eyes && !writingNow && S.closedMs > T.closedSec * 1000) fire("eyes", z);
-    if (settings.away && !writingNow && S.awayMs > T.awaySec * 1000) fire("away", z);
+    if (settings.eyes && !writingNow && S.closedMs > T.closedSec * (thinking ? 3 : 1) * 1000) fire("eyes", z);
+    if (settings.away && !writingNow && !thinking && S.awayMs > T.awaySec * 1000) fire("away", z);
     S.yawns = S.yawns.filter(t => now - t < 300000);
     if (settings.yawn && S.yawns.length >= T.yawnCount) { if (fire("yawn", z)) S.yawns = []; }
     if (settings.phone && S.phoneNow) fire("phone", z);
     S.driftMs = (baselineReady() && S.p > T.pThr) ? S.driftMs + 1000 : Math.max(0, S.driftMs - 2000);
-    if (settings.drift && S.driftMs >= T.driftSec * 1000) { if (fire("drift", z)) S.driftMs = 0; }
+    if (settings.drift && !thinking && S.driftMs >= T.driftSec * 1000) { if (fire("drift", z)) S.driftMs = 0; }
   } else {
     if (alertType === "eyes" && S.closedMs > T.closedSec * 1000 && now - alertLastRepeat > 7000) { alertLastRepeat = now; chime("high"); say("wake up!"); }
     if (alertType === "gone" && S.present) hideAlert(false);
@@ -1378,6 +1699,7 @@ function tick(now) {
   if (S.present) { if (S.closedMs > 1200) inst = Math.min(inst, 25); if (S.awayMs > 2500) inst = Math.min(inst, 45); }
   if (S.phoneNow) inst = Math.min(inst, 40);
   if (writingNow && S.present) inst = Math.max(inst, 90);
+  if (thinking && S.present) inst = Math.max(inst, 80);
   inst = clamp(inst, 0, 100);
   S.score += 0.25 * (inst - S.score);
   if (inst >= 60) S.focusedSec++;
@@ -1410,6 +1732,7 @@ function fire(type, z) {
   $("#alertOv").classList.toggle("soft", A.level !== "high");
   $("#aYes").textContent = type === "phone" ? "Yes, putting it away" : type === "gone" ? "OK, I'm back" : "Yes, I drifted";
   $("#aNo").style.display = type === "gone" ? "none" : "";
+  $("#aThink").style.display = (type === "drift" || type === "away") ? "" : "none";
   $("#aNo").textContent = type === "away" ? "No, that's my notes" : type === "phone" ? "No phone there" : "No, I was focused";
   setDim(false); lastTouchT = performance.now();
   show("#alertOv");
@@ -1440,11 +1763,15 @@ function feedback(correct) {
 }
 $("#aYes").onclick = () => feedback(true);
 $("#aNo").onclick = () => feedback(false);
+$("#aThink").onclick = () => {          // not a false alarm and not a drift: teach it "thinking", then pause alerts
+  if (alertZ) { train(alertZ, 0, 0.04); model.labels++; saveModel(); }
+  hideAlert(); toggleThinking(true);
+};
 
 // ============ UI ============
 function logEvent(type, text) {
   if (!S) return;
-  const em = ALERTS[type] ? ALERTS[type].emoji : type === "self" ? "🙋" : type === "yawnlog" ? "🥱" : "•";
+  const em = ALERTS[type] ? ALERTS[type].emoji : type === "self" ? "🙋" : type === "yawnlog" ? "🥱" : type === "think" ? "🤔" : type === "break" ? "☕" : "•";
   S.log.unshift({ t: S.totalSec, em, text }); S.log = S.log.slice(0, 7);
   $("#sessLog").innerHTML = S.log.map(l => `<li><time>${fmt(l.t)}</time><span>${l.em} ${esc(l.text)}</span></li>`).join("");
 }
@@ -1455,14 +1782,16 @@ function updateUI() {
   const col = sc >= 70 ? "#3ee6a8" : sc >= 45 ? "#ffbf47" : "#ff5d73";
   const label = !S.present ? "Away from desk" : sc >= 70 ? "Locked in" : sc >= 45 ? "Drifting…" : "Zoned out";
   $("#scoreNum").textContent = sc; $("#hudScore").textContent = sc;
-  $("#hudDot").style.background = col; $("#hudState").textContent = label;
+  const thinkLeft = thinkingNow() ? Math.ceil((S.thinkUntil - performance.now()) / 1000) : 0;
+  $("#hudDot").style.background = col; $("#hudState").textContent = thinkLeft ? `🤔 Thinking ${fmt(thinkLeft)}` : label;
   const arc = $("#ringArc"); arc.setAttribute("stroke", col); arc.setAttribute("stroke-dashoffset", String(615.75 * (1 - sc / 100)));
   const st = $("#stateTxt"); st.textContent = label; st.style.color = col;
   if (S.mode === "book") {
     $("#bvNum").textContent = sc; $("#bvTime").textContent = fmt(S.totalSec);
     const ba = $("#bvArc"); ba.setAttribute("stroke", col); ba.setAttribute("stroke-dashoffset", String(615.75 * (1 - sc / 100)));
     const bs = $("#bvState"); bs.textContent = label; bs.style.color = col;
-    $("#bvHint").textContent = !S.present ? "I can't see your face. Check the iPad's angle."
+    $("#bvHint").textContent = thinkLeft ? `🤔 Thinking mode · ${fmt(thinkLeft)} left. Zone-out alerts are paused.`
+      : !S.present ? "I can't see your face. Check the iPad's angle."
       : !baselineReady() ? `Learning your focus pattern… ${Math.round(clamp(model.n / 90, 0, 1) * 100)}%`
       : "Eyes on your book. I'll nudge you if you drift. Tap anywhere to wake the screen.";
   }
@@ -1530,7 +1859,7 @@ function drawSummary(mins) {
   });
 }
 
-renderSettings(); renderHistory(); renderModelCard(); renderRecent();
+renderSettings(); renderHistory(); renderModelCard(); renderRecent(); renderToday();
 </script>
 </body>
 </html>
