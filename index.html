@@ -716,7 +716,7 @@ function unrenderPage(n) {
   const t = R.tasks.get(n); if (t && t.cancel) { try { t.cancel(); } catch (e) {} }
   R.tasks.delete(n);
   const ink = R.ink && R.ink.get(n);
-  if (ink) { ink.canvas.width = 0; ink.canvas.height = 0; ink.cache.width = 0; ink.cache.height = 0; R.ink.delete(n); }
+  if (ink) { for (const c of [ink.canvas, ink.cache, ink.live]) { c.width = 0; c.height = 0; } R.ink.delete(n); }
   const el = R.els[n - 1]; if (!el) return;
   const c = el.querySelector("canvas"); if (c) { c.width = 0; c.height = 0; }      // frees iPad canvas memory
   el.innerHTML = `<div class="pn">${n}</div>`;
@@ -770,9 +770,10 @@ const curSize = () => SIZES[INK.tool][INK.sizes[INK.tool]];
 
 function attachInk(n, el, W, H) {
   const canvas = document.createElement("canvas"); canvas.className = "ink"; canvas.width = W; canvas.height = H;
+  const live = document.createElement("canvas"); live.className = "ink"; live.width = W; live.height = H;   // only the stroke being written
   const cache = document.createElement("canvas"); cache.width = W; cache.height = H;
-  el.appendChild(canvas);
-  R.ink.set(n, { canvas, ctx: canvas.getContext("2d"), cache, cctx: cache.getContext("2d"), W });
+  el.appendChild(canvas); el.appendChild(live);
+  R.ink.set(n, { canvas, ctx: canvas.getContext("2d"), live, lctx: live.getContext("2d", { desynchronized: true }), cache, cctx: cache.getContext("2d"), W });
   redrawCache(n);
 }
 // Turn a stroke into smooth curve pieces: quadratic Béziers through the midpoints of the samples,
@@ -849,7 +850,9 @@ pagesEl.addEventListener("pointerdown", e => {
   const n = +pg.dataset.n; if (!R.ink.has(n)) return;
   e.preventDefault();
   try { pg.setPointerCapture(e.pointerId); } catch (x) {}
-  const a = INK.active = { id: e.pointerId, n, rect: pg.getBoundingClientRect(), erase: INK.tool === "eraser", removed: [], stroke: null, raf: 0 };
+  const a = INK.active = { id: e.pointerId, n, rect: pg.getBoundingClientRect(), erase: INK.tool === "eraser", removed: [], stroke: null, raf: 0,
+                           drawn: 0, pr: [], box: null };
+  INK.lastInkT = performance.now();
   if (a.erase) eraseAt(e);
   else { a.stroke = { t: INK.tool, c: INK.tool === "hl" ? INK.hlColor : INK.penColor, w: curSize(), p: [] }; addInkPoints(e); }
 });
@@ -862,20 +865,48 @@ pagesEl.addEventListener("pointerup", endInk);
 pagesEl.addEventListener("pointercancel", endInk);
 // Input smoothing: each new sample is pulled only part of the way toward the pen (removes hand/sensor jitter),
 // pressure is eased, and samples closer than ~0.4px are skipped.
-const STREAMLINE = 0.5, MIN_GAP = 0.00035;
+// Speed-adaptive smoothing: slow, careful strokes get more smoothing (that's where shake shows);
+// fast strokes get almost none, so the line keeps up with the pen tip instead of lagging and "catching up".
+const MIN_GAP = 0.00035;
 function addInkPoints(e) {
   const a = INK.active, pts = a.stroke.p;
+  INK.lastInkT = performance.now();
   const evs = (e.getCoalescedEvents && e.getCoalescedEvents()) || [];
   for (const ev of (evs.length ? evs : [e])) {
     const raw = inkPoint(ev, a.rect);
     a.raw = raw;
     if (!a.sm) { a.sm = raw.slice(); pts.push(raw); continue; }
-    const sm = a.sm;
-    sm[0] += (raw[0] - sm[0]) * STREAMLINE; sm[1] += (raw[1] - sm[1]) * STREAMLINE; sm[2] += (raw[2] - sm[2]) * 0.4;
+    const sm = a.sm, gap = Math.hypot(raw[0] - sm[0], raw[1] - sm[1]);
+    const k = clamp(0.3 + gap * 110, 0.3, 0.92);
+    sm[0] += (raw[0] - sm[0]) * k; sm[1] += (raw[1] - sm[1]) * k; sm[2] += (raw[2] - sm[2]) * 0.35;
     const last = pts[pts.length - 1];
     if (Math.hypot(sm[0] - last[0], sm[1] - last[1]) >= MIN_GAP) pts.push([Math.round(sm[0] * 1e5) / 1e5, Math.round(sm[1] * 1e5) / 1e5, Math.round(sm[2] * 1000) / 1000]);
   }
-  if (!a.raf) a.raf = requestAnimationFrame(() => { a.raf = 0; if (INK.active === a) blit(a.n, a.stroke); });
+  if (!a.raf) a.raf = requestAnimationFrame(() => { a.raf = 0; if (INK.active === a) drawLive(a); });
+}
+// Draw only what's new since the last frame on a separate "live" layer (no full-page redraws while writing)
+function drawLive(a) {
+  const ink = R.ink.get(a.n); if (!ink) return;
+  const s = a.stroke, p = s.p, n = p.length, W = ink.W, g = ink.lctx;
+  while (a.pr.length < n) { const i = a.pr.length; a.pr.push(i ? a.pr[i - 1] + (p[i][2] - a.pr[i - 1]) * 0.3 : p[0][2]); }
+  const base = s.w * W, pad = base * 1.2 + 2;
+  for (const q of p.slice(Math.max(0, a.drawn - 1))) {
+    const x = q[0] * W, y = q[1] * W;
+    if (!a.box) a.box = [x, y, x, y]; else { a.box[0] = Math.min(a.box[0], x); a.box[1] = Math.min(a.box[1], y); a.box[2] = Math.max(a.box[2], x); a.box[3] = Math.max(a.box[3], y); }
+  }
+  if (s.t === "hl") {   // translucent: redraw the whole (short) stroke inside its box so overlaps don't darken
+    const b = a.box; g.clearRect(b[0] - pad, b[1] - pad, b[2] - b[0] + 2 * pad, b[3] - b[1] + 2 * pad);
+    strokePath(g, s, W); a.drawn = n; return;
+  }
+  g.lineCap = "round"; g.lineJoin = "round"; g.strokeStyle = s.c; g.fillStyle = s.c;
+  if (n === 1 && a.drawn === 0) { g.beginPath(); g.arc(p[0][0] * W, p[0][1] * W, base * (0.4 + 0.7 * a.pr[0]) / 2, 0, 6.2832); g.fill(); }
+  const mid = i => [(p[i][0] + p[i + 1][0]) / 2 * W, (p[i][1] + p[i + 1][1]) / 2 * W];
+  for (let i = Math.max(1, a.drawn); i <= n - 2; i++) {
+    const st = i === 1 ? [p[0][0] * W, p[0][1] * W] : mid(i - 1), en = mid(i);
+    g.lineWidth = base * Math.round((0.4 + 0.7 * a.pr[i]) * 20) / 20;
+    g.beginPath(); g.moveTo(st[0], st[1]); g.quadraticCurveTo(p[i][0] * W, p[i][1] * W, en[0], en[1]); g.stroke();
+  }
+  a.drawn = Math.max(a.drawn, n - 1);
 }
 function eraseAt(e) {
   const a = INK.active, q = inkPoint(e, a.rect), list = R.notes[a.n] || [];
@@ -897,7 +928,14 @@ function endInk(e) {
     if (a.raw && a.stroke.p.length > 1 && Math.hypot(a.raw[0] - last[0], a.raw[1] - last[1]) > MIN_GAP) a.stroke.p.push([a.raw[0], a.raw[1], last[2]]);
     (R.notes[a.n] = R.notes[a.n] || []).push(a.stroke);
     INK.undo.push({ t: "add", n: a.n, s: a.stroke }); INK.redo = [];
-    const ink = R.ink.get(a.n); if (ink) { strokePath(ink.cctx, a.stroke, ink.W); blit(a.n); }
+    const ink = R.ink.get(a.n);
+    if (ink) {
+      strokePath(ink.cctx, a.stroke, ink.W);     // into the page cache
+      strokePath(ink.ctx, a.stroke, ink.W);      // and onto the visible layer (no full-page redraw)
+      const pad = a.stroke.w * ink.W * 1.2 + 2, b = a.box;
+      if (b) ink.lctx.clearRect(b[0] - pad, b[1] - pad, b[2] - b[0] + 2 * pad, b[3] - b[1] + 2 * pad); else ink.lctx.clearRect(0, 0, ink.live.width, ink.live.height);
+    }
+    INK.lastInkT = performance.now();
     if (S) { S.touches += 2; S.inkStrokes = (S.inkStrokes || 0) + 1; }   // writing = active engagement for the AI
   }
   if (INK.undo.length > 200) INK.undo.shift();
@@ -1164,13 +1202,17 @@ function loop() {
   if (!running) return;
   rafId = requestAnimationFrame(loop);
   const now = performance.now();
-  if (now - lastFaceT < 66 || video.readyState < 2 || !video.videoWidth) return;
+  // The AI models run on the same thread as the Pencil. While you're writing, pause them completely,
+  // and right after a stroke only check the face twice a second, so the ink never stutters.
+  if (INK.active) return;
+  const writing = now - (INK.lastInkT || 0) < 1500;
+  if (now - lastFaceT < (writing ? 500 : 66) || video.readyState < 2 || !video.videoWidth) return;
   lastFaceT = now;
   let fr = null, hr = null, newHands = false;
   try { fr = faceLm.detectForVideo(video, now); } catch (e) {}
   handTurn = !handTurn;
-  if (handTurn) { try { hr = handLm.detectForVideo(video, now); S.lastHands = hr; newHands = true; } catch (e) {} } else hr = S.lastHands;
-  if (objDet && settings.phone && now - S.lastObj > 1500) {
+  if (handTurn && !writing) { try { hr = handLm.detectForVideo(video, now); S.lastHands = hr; newHands = true; } catch (e) {} } else hr = S.lastHands;
+  if (objDet && settings.phone && !writing && now - S.lastObj > 1500) {
     S.lastObj = now;
     try {
       const r = objDet.detectForVideo(video, now);
@@ -1316,10 +1358,12 @@ function tick(now) {
   } else S.p *= 0.9;
   S.pHist.push(S.present ? S.p : null); if (S.pHist.length > 180) S.pHist.shift();
 
+  const writingNow = now - (INK.lastInkT || 0) < 5000;     // actively writing on the PDF = engaged
+  if (writingNow) { S.driftMs = 0; S.closedMs = 0; S.awayMs = 0; }
   if (!alertOpen) {
     if (settings.gone && S.noFaceMs > T.goneSec * 1000 && !S.goneAlerted) { if (fire("gone", z)) S.goneAlerted = true; }
-    if (settings.eyes && S.closedMs > T.closedSec * 1000) fire("eyes", z);
-    if (settings.away && S.awayMs > T.awaySec * 1000) fire("away", z);
+    if (settings.eyes && !writingNow && S.closedMs > T.closedSec * 1000) fire("eyes", z);
+    if (settings.away && !writingNow && S.awayMs > T.awaySec * 1000) fire("away", z);
     S.yawns = S.yawns.filter(t => now - t < 300000);
     if (settings.yawn && S.yawns.length >= T.yawnCount) { if (fire("yawn", z)) S.yawns = []; }
     if (settings.phone && S.phoneNow) fire("phone", z);
@@ -1333,6 +1377,7 @@ function tick(now) {
   let inst = S.present ? 100 * (1 - (baselineReady() ? S.p : 0)) : 0;
   if (S.present) { if (S.closedMs > 1200) inst = Math.min(inst, 25); if (S.awayMs > 2500) inst = Math.min(inst, 45); }
   if (S.phoneNow) inst = Math.min(inst, 40);
+  if (writingNow && S.present) inst = Math.max(inst, 90);
   inst = clamp(inst, 0, 100);
   S.score += 0.25 * (inst - S.score);
   if (inst >= 60) S.focusedSec++;
